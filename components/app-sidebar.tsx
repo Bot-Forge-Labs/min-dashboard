@@ -20,52 +20,52 @@ import Link from "next/link"
 const menuItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: Home,
   },
   {
     title: "Servers",
-    url: "/servers",
+    url: "/dashboard/servers",
     icon: Server,
   },
   {
     title: "Commands",
-    url: "/commands",
+    url: "/dashboard/commands",
     icon: Zap,
   },
   {
     title: "Moderation",
-    url: "/moderation",
+    url: "/dashboard/moderation",
     icon: Shield,
   },
   {
     title: "Giveaways",
-    url: "/giveaways",
+    url: "/dashboard/giveaways",
     icon: Gift,
   },
   {
     title: "Announcements",
-    url: "/announcements",
+    url: "/dashboard/announcements",
     icon: MessageSquare,
   },
   {
     title: "Reaction Roles",
-    url: "/reaction-roles",
+    url: "/dashboard/reaction-roles",
     icon: Smile,
   },
   {
     title: "Users",
-    url: "/users",
+    url: "/dashboard/users",
     icon: Users,
   },
   {
     title: "Analytics",
-    url: "/analytics",
+    url: "/dashboard/analytics",
     icon: BarChart3,
   },
   {
     title: "Settings",
-    url: "/settings",
+    url: "/dashboard/settings",
     icon: Settings,
   },
 ]
