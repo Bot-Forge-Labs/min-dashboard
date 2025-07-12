@@ -24,6 +24,8 @@ export async function getGuilds(): Promise<Guild[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("guilds").select("*").order("created_at", { ascending: false })
 
     if (error) {
@@ -46,6 +48,8 @@ export async function getCommands(): Promise<Command[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("commands").select("*").order("usage_count", { ascending: false })
 
     if (error) {
@@ -68,6 +72,7 @@ export async function getModLogs(limit = 50): Promise<ModLog[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
 
     // Try the view first, fallback to regular table if view doesn't exist
     let { data, error } = await supabase
@@ -104,6 +109,8 @@ export async function getPunishments(): Promise<Punishment[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("punishments").select("*").order("issued_at", { ascending: false })
 
     if (error) {
@@ -126,6 +133,8 @@ export async function getGiveaways(): Promise<Giveaway[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("giveaways").select("*").order("created_at", { ascending: false })
 
     if (error) {
@@ -148,6 +157,8 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
 
     if (error) {
@@ -170,6 +181,8 @@ export async function getReactionRoles(): Promise<ReactionRole[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase.from("reaction_roles").select("*").order("created_at", { ascending: false })
 
     if (error) {
@@ -192,6 +205,8 @@ export async function getUsers(limit = 100): Promise<User[]> {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from("users")
       .select("*")
@@ -211,21 +226,24 @@ export async function getUsers(limit = 100): Promise<User[]> {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
+  const defaultStats = {
+    total_servers: 0,
+    total_users: 0,
+    bot_uptime: 0,
+    commands_per_day: 0,
+    active_giveaways: 0,
+    mod_actions_week: 0,
+    announcements_month: 0,
+  }
+
   if (!isSupabaseConfigured()) {
-    console.warn("Supabase not configured, returning mock stats")
-    return {
-      total_servers: 0,
-      total_users: 0,
-      bot_uptime: 0,
-      commands_per_day: 0,
-      active_giveaways: 0,
-      mod_actions_week: 0,
-      announcements_month: 0,
-    }
+    console.warn("Supabase not configured, returning default stats")
+    return defaultStats
   }
 
   try {
     const supabase = await createClient()
+    if (!supabase) return defaultStats
 
     // Get total servers
     const { count: serverCount } = await supabase.from("guilds").select("*", { count: "exact", head: true })
@@ -272,15 +290,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   } catch (error) {
     console.error("Error fetching dashboard stats:", error)
-    return {
-      total_servers: 0,
-      total_users: 0,
-      bot_uptime: 0,
-      commands_per_day: 0,
-      active_giveaways: 0,
-      mod_actions_week: 0,
-      announcements_month: 0,
-    }
+    return defaultStats
   }
 }
 
@@ -292,6 +302,7 @@ export async function getRecentActivity(limit = 10) {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
 
     // Try the view first, fallback to regular table if view doesn't exist
     let { data, error } = await supabase
@@ -328,6 +339,8 @@ export async function getServerOverview() {
 
   try {
     const supabase = await createClient()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from("guilds")
       .select("guild_id, name")

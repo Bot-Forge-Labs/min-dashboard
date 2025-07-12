@@ -34,7 +34,15 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Protected routes - require authentication
-  if (request.nextUrl.pathname.startsWith("/dashboard") && !user) {
+  if (
+    request.nextUrl.pathname.startsWith("/dashboard") ||
+    (request.nextUrl.pathname !== "/" &&
+      request.nextUrl.pathname !== "/auth/callback" &&
+      request.nextUrl.pathname !== "/auth/auth-code-error" &&
+      !request.nextUrl.pathname.startsWith("/_next") &&
+      !request.nextUrl.pathname.startsWith("/api") &&
+      !user)
+  ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = "/"
@@ -44,7 +52,7 @@ export async function middleware(request: NextRequest) {
   // If user is logged in and tries to access login page, redirect to dashboard
   if (request.nextUrl.pathname === "/" && user) {
     const url = request.nextUrl.clone()
-    url.pathname = "/dashboard"
+    url.pathname = "/servers" // Change this to your main dashboard page
     return NextResponse.redirect(url)
   }
 
