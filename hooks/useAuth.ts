@@ -31,7 +31,7 @@ export function useAuth() {
       setLoading(false)
 
       if (event === "SIGNED_IN") {
-        router.push("/servers") // Change from "/dashboard" to your main page
+        router.push("/dashboard") // Change to dashboard
       } else if (event === "SIGNED_OUT") {
         router.push("/")
       }

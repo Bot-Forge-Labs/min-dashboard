@@ -36,23 +36,28 @@ export async function middleware(request: NextRequest) {
   // Protected routes - require authentication
   if (
     request.nextUrl.pathname.startsWith("/dashboard") ||
-    (request.nextUrl.pathname !== "/" &&
-      request.nextUrl.pathname !== "/auth/callback" &&
-      request.nextUrl.pathname !== "/auth/auth-code-error" &&
-      !request.nextUrl.pathname.startsWith("/_next") &&
-      !request.nextUrl.pathname.startsWith("/api") &&
-      !user)
+    request.nextUrl.pathname.startsWith("/servers") ||
+    request.nextUrl.pathname.startsWith("/commands") ||
+    request.nextUrl.pathname.startsWith("/moderation") ||
+    request.nextUrl.pathname.startsWith("/giveaways") ||
+    request.nextUrl.pathname.startsWith("/announcements") ||
+    request.nextUrl.pathname.startsWith("/reaction-roles") ||
+    request.nextUrl.pathname.startsWith("/users") ||
+    request.nextUrl.pathname.startsWith("/analytics") ||
+    request.nextUrl.pathname.startsWith("/settings")
   ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = "/"
-    return NextResponse.redirect(url)
+    if (!user) {
+      // no user, redirect to login page
+      const url = request.nextUrl.clone()
+      url.pathname = "/"
+      return NextResponse.redirect(url)
+    }
   }
 
   // If user is logged in and tries to access login page, redirect to dashboard
   if (request.nextUrl.pathname === "/" && user) {
     const url = request.nextUrl.clone()
-    url.pathname = "/servers" // Change this to your main dashboard page
+    url.pathname = "/dashboard" // Redirect to dashboard instead of servers
     return NextResponse.redirect(url)
   }
 
