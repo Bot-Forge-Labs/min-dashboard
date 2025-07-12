@@ -1,0 +1,132 @@
+"use client"
+
+import { Bot, Server, Zap, Shield, Gift, MessageSquare, Users, Settings, BarChart3, Home, Smile } from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
+
+const menuItems = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: Home,
+  },
+  {
+    title: "Servers",
+    url: "/servers",
+    icon: Server,
+  },
+  {
+    title: "Commands",
+    url: "/commands",
+    icon: Zap,
+  },
+  {
+    title: "Moderation",
+    url: "/moderation",
+    icon: Shield,
+  },
+  {
+    title: "Giveaways",
+    url: "/giveaways",
+    icon: Gift,
+  },
+  {
+    title: "Announcements",
+    url: "/announcements",
+    icon: MessageSquare,
+  },
+  {
+    title: "Reaction Roles",
+    url: "/reaction-roles",
+    icon: Smile,
+  },
+  {
+    title: "Users",
+    url: "/users",
+    icon: Users,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
+]
+
+export function AppSidebar() {
+  return (
+    <Sidebar className="border-r border-emerald-400/20 bg-white/5 backdrop-blur-xl">
+      <SidebarHeader className="border-b border-emerald-400/20 p-4">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-emerald-400/20 rounded-lg blur-sm"></div>
+            <div className="relative bg-gradient-to-br from-emerald-400 to-green-400 p-2 rounded-lg shadow-lg">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div>
+            <h2 className="font-semibold bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">
+              Minbot Dashboard
+            </h2>
+            <p className="text-xs text-emerald-300/60">v2.0.0</p>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-emerald-300/80">Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    className="text-emerald-200/80 hover:text-white hover:bg-emerald-500/10 data-[active=true]:bg-emerald-500/20 data-[active=true]:text-emerald-300"
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-emerald-400/20 p-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8 ring-2 ring-emerald-400/20">
+            <AvatarImage src="/placeholder.svg?height=32&width=32" />
+            <AvatarFallback className="bg-emerald-600 text-white">AD</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">Admin User</p>
+            <p className="text-xs text-emerald-300/60 truncate">admin@example.com</p>
+          </div>
+        </div>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </Sidebar>
+  )
+}
