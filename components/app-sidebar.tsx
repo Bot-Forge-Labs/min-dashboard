@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Bot,
@@ -13,7 +13,7 @@ import {
   Home,
   Smile,
   UserCog,
-} from "lucide-react"
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,9 +26,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const menuItems = [
   {
@@ -86,9 +89,11 @@ const menuItems = [
     url: "/dashboard/settings",
     icon: Settings,
   },
-]
+];
 
 export function AppSidebar() {
+  const pathname = usePathname();
+
   return (
     <Sidebar className="border-r border-emerald-400/20 bg-white/5 backdrop-blur-xl">
       <SidebarHeader className="border-b border-emerald-400/20 p-4">
@@ -96,11 +101,13 @@ export function AppSidebar() {
           <div className="relative">
             <div className="absolute inset-0 bg-emerald-400/20 rounded-lg blur-xs"></div>
             <div className="relative bg-linear-to-br from-emerald-400 to-green-400 p-2 rounded-lg shadow-lg">
-             <img
-                    src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"
-                    alt="Minbot"
-                    className="w-16 h-16 object-contain transition-transform duration-500 hover:scale-110"
-                  />
+              <Image
+                src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"
+                alt="Minbot"
+                className="w-16 h-16 object-contain transition-transform duration-500 hover:scale-110"
+                width={32}
+                height={32}
+              />
             </div>
           </div>
           <div>
@@ -114,14 +121,20 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-emerald-300/80">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-emerald-300/80">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className="text-emerald-200/80 hover:text-white hover:bg-emerald-500/10 data-[active=true]:bg-emerald-500/20 data-[active=true]:text-emerald-300"
+                    className={cn(
+                      "text-emerald-200/80 hover:text-white hover:bg-emerald-500/10 data-[active=true]:bg-emerald-500/20 data-[active=true]:text-emerald-300 ",
+                      pathname === item.url &&
+                        "bg-emerald-500/20 text-emerald-300"
+                    )}
                   >
                     <Link href={item.url}>
                       <item.icon className="w-4 h-4" />
@@ -136,5 +149,5 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
