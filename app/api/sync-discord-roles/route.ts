@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Guild ID is required" }, { status: 400 })
     }
 
-    // This grabs from Vercel environment variables
+    // This grabs from Vercel environment variables, not local .env
     const botToken = process.env.DISCORD_BOT_TOKEN
     if (!botToken) {
       console.error("Discord bot token not configured")

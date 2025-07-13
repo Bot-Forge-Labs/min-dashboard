@@ -6,24 +6,24 @@ export async function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase environment variables not configured")
-    console.warn("NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
-    console.warn("NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
-    return null
+    console.error("Missing Supabase environment variables:")
+    console.error("NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
+    console.error("NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
+    throw new Error("Supabase environment variables not configured")
   }
 
   // Validate URL format
   try {
     new URL(supabaseUrl)
   } catch {
-    console.warn("Invalid Supabase URL format:", supabaseUrl)
-    return null
+    console.error("Invalid Supabase URL format:", supabaseUrl)
+    throw new Error("Invalid Supabase URL format")
   }
 
   try {
     const cookieStore = await cookies()
 
-    return createServerClient(supabaseUrl, supabaseAnonKey, {
+    const client = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return cookieStore.getAll()
@@ -39,8 +39,10 @@ export async function createClient() {
         },
       },
     })
+
+    return client
   } catch (error) {
-    console.warn("Failed to create Supabase client:", error)
-    return null
+    console.error("Failed to create Supabase client:", error)
+    throw new Error("Failed to create Supabase client")
   }
 }
