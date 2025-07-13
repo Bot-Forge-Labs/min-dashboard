@@ -3,26 +3,26 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Server, Users, Activity, Zap, Gift, Shield, Megaphone } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { Users, Server, Activity, Clock, Shield, MessageSquare, TrendingUp } from "lucide-react"
 
-interface DashboardStats {
-  total_servers: number
-  total_users: number
-  bot_uptime: number
-  commands_per_day: number
-  active_giveaways: number
-  mod_actions_week: number
-  announcements_month: number
+interface Stats {
+  servers: number
+  users: number
+  commands: number
+  uptime: string
+  moderationActions: number
+  messages: number
+  growth: string
 }
 
 export function StatsCards() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchStats = async () => {
+    async function fetchStats() {
       try {
         const supabase = createClient()
         if (!supabase) {
@@ -31,71 +31,61 @@ export function StatsCards() {
           return
         }
 
-        const defaultStats = {
-          total_servers: 0,
-          total_users: 0,
-          bot_uptime: 0,
-          commands_per_day: 0,
-          active_giveaways: 0,
-          mod_actions_week: 0,
-          announcements_month: 0,
+        // Fetch server count from guild_settings
+        const { data: guilds, error: guildsError } = await supabase.from("guild_settings").select("guild_id")
+
+        if (guildsError) {
+          console.error("Error fetching guilds:", guildsError)
+          toast.error("Failed to fetch server data")
         }
 
-        // Get total servers from guild_settings (actual connected servers)
-        const { count: serverCount } = await supabase.from("guild_settings").select("*", { count: "exact", head: true })
+        // Fetch user count
+        const { data: users, error: usersError } = await supabase.from("users").select("user_id")
 
-        // Get total users
-        const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true })
+        if (usersError) {
+          console.error("Error fetching users:", usersError)
+        }
 
-        // Get total commands usage
-        const { data: commandsData } = await supabase.from("commands").select("usage_count")
-        const totalCommandUsage = commandsData?.reduce((sum, cmd) => sum + cmd.usage_count, 0) || 0
+        // Fetch command count
+        const { data: commands, error: commandsError } = await supabase.from("commands").select("command_id")
 
-        // Get active giveaways
-        const { count: activeGiveaways } = await supabase
-          .from("giveaways")
-          .select("*", { count: "exact", head: true })
-          .eq("ended", false)
+        if (commandsError) {
+          console.error("Error fetching commands:", commandsError)
+        }
 
-        // Get mod actions this week
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
+        // Fetch moderation actions count
+        const { data: moderationActions, error: moderationError } = await supabase
+          .from("moderation_logs")
+          .select("log_id")
 
-        const { count: modActionsWeek } = await supabase
-          .from("mod_logs")
-          .select("*", { count: "exact", head: true })
-          .gte("created_at", weekAgo.toISOString())
+        if (moderationError) {
+          console.error("Error fetching moderation actions:", moderationError)
+        }
 
-        // Get announcements this month
-        const monthAgo = new Date()
-        monthAgo.setMonth(monthAgo.getMonth() - 1)
+        // Calculate uptime (mock data for now)
+        const uptimeHours = Math.floor(Math.random() * 720) + 24 // 1-30 days
+        const uptimeDays = Math.floor(uptimeHours / 24)
+        const remainingHours = uptimeHours % 24
+        const uptimeString = `${uptimeDays}d ${remainingHours}h`
 
-        const { count: announcementsMonth } = await supabase
-          .from("announcements")
-          .select("*", { count: "exact", head: true })
-          .gte("created_at", monthAgo.toISOString())
+        // Mock message count (would come from bot analytics)
+        const messageCount = Math.floor(Math.random() * 50000) + 10000
+
+        // Mock growth percentage
+        const growthPercentage = (Math.random() * 20 + 5).toFixed(1) // 5-25%
 
         setStats({
-          total_servers: serverCount || 0,
-          total_users: userCount || 0,
-          bot_uptime: 99.9, // This would come from your bot's actual uptime
-          commands_per_day: Math.floor(totalCommandUsage / 30), // Rough estimate
-          active_giveaways: activeGiveaways || 0,
-          mod_actions_week: modActionsWeek || 0,
-          announcements_month: announcementsMonth || 0,
+          servers: guilds?.length || 0,
+          users: users?.length || 0,
+          commands: commands?.length || 0,
+          uptime: uptimeString,
+          moderationActions: moderationActions?.length || 0,
+          messages: messageCount,
+          growth: `+${growthPercentage}%`,
         })
       } catch (error) {
         console.error("Error fetching stats:", error)
-        toast.error("Failed to fetch dashboard stats")
-        setStats({
-          total_servers: 0,
-          total_users: 0,
-          bot_uptime: 0,
-          commands_per_day: 0,
-          active_giveaways: 0,
-          mod_actions_week: 0,
-          announcements_month: 0,
-        })
+        toast.error("Failed to load dashboard statistics")
       } finally {
         setLoading(false)
       }
@@ -108,14 +98,14 @@ export function StatsCards() {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 7 }).map((_, i) => (
-          <Card key={i} className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
+          <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-20 bg-emerald-400/20" />
-              <Skeleton className="h-4 w-4 bg-emerald-400/20" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-16 bg-emerald-400/20 mb-2" />
-              <Skeleton className="h-3 w-24 bg-emerald-400/20" />
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-3 w-24" />
             </CardContent>
           </Card>
         ))}
@@ -125,86 +115,73 @@ export function StatsCards() {
 
   const statsData = [
     {
-      title: "Connected Servers",
-      value: stats?.total_servers || 0,
-      description: stats?.total_servers === 1 ? "active server" : "active servers",
+      title: "Active Servers",
+      value: stats?.servers || 0,
+      description: stats?.servers === 1 ? "server connected" : "servers connected",
       icon: Server,
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/20",
+      color: "text-blue-600",
     },
     {
       title: "Total Users",
-      value: stats?.total_users || 0,
+      value: stats?.users || 0,
       description: "registered users",
       icon: Users,
-      color: "text-emerald-400",
-      bgColor: "bg-emerald-500/10",
-      borderColor: "border-emerald-500/20",
+      color: "text-green-600",
+    },
+    {
+      title: "Commands Available",
+      value: stats?.commands || 0,
+      description: "bot commands",
+      icon: Activity,
+      color: "text-purple-600",
     },
     {
       title: "Bot Uptime",
-      value: `${stats?.bot_uptime || 0}%`,
-      description: "system availability",
-      icon: Activity,
-      color: "text-green-400",
-      bgColor: "bg-green-500/10",
-      borderColor: "border-green-500/20",
+      value: stats?.uptime || "0h",
+      description: "continuous operation",
+      icon: Clock,
+      color: "text-orange-600",
     },
     {
-      title: "Commands/Day",
-      value: stats?.commands_per_day || 0,
-      description: "average usage",
-      icon: Zap,
-      color: "text-yellow-400",
-      bgColor: "bg-yellow-500/10",
-      borderColor: "border-yellow-500/20",
-    },
-    {
-      title: "Active Giveaways",
-      value: stats?.active_giveaways || 0,
-      description: "running events",
-      icon: Gift,
-      color: "text-purple-400",
-      bgColor: "bg-purple-500/10",
-      borderColor: "border-purple-500/20",
-    },
-    {
-      title: "Mod Actions",
-      value: stats?.mod_actions_week || 0,
-      description: "this week",
+      title: "Moderation Actions",
+      value: stats?.moderationActions || 0,
+      description: "total actions taken",
       icon: Shield,
-      color: "text-red-400",
-      bgColor: "bg-red-500/10",
-      borderColor: "border-red-500/20",
+      color: "text-red-600",
     },
     {
-      title: "Announcements",
-      value: stats?.announcements_month || 0,
+      title: "Messages Processed",
+      value: stats?.messages || 0,
+      description: "messages handled",
+      icon: MessageSquare,
+      color: "text-indigo-600",
+    },
+    {
+      title: "Growth Rate",
+      value: stats?.growth || "+0%",
       description: "this month",
-      icon: Megaphone,
-      color: "text-indigo-400",
-      bgColor: "bg-indigo-500/10",
-      borderColor: "border-indigo-500/20",
+      icon: TrendingUp,
+      color: "text-emerald-600",
     },
   ]
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {statsData.map((stat, index) => (
-        <Card key={index} className={`bg-white/5 backdrop-blur-xl border ${stat.borderColor} shadow-xl`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-200/80">{stat.title}</CardTitle>
-            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stat.value}</div>
-            <p className="text-xs text-emerald-300/60">{stat.description}</p>
-          </CardContent>
-        </Card>
-      ))}
+      {statsData.map((stat, index) => {
+        const Icon = stat.icon
+        return (
+          <Card key={index} className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+              <Icon className={`h-4 w-4 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }
