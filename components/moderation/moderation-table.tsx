@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Shield, User, Calendar, Loader2, RefreshCw } from "lucide-react"
+import { Search, Eye, Loader2, RefreshCw } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
 import type { ModLog } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -75,25 +76,78 @@ export function ModerationTable() {
         return "bg-red-500/10 text-red-400 border-red-500/20"
       case "kick":
         return "bg-orange-500/10 text-orange-400 border-orange-500/20"
-      case "mute":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+      case "warn":
       case "warning":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+      case "timeout":
+      case "mute":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
       case "unban":
         return "bg-green-500/10 text-green-400 border-green-500/20"
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
     }
   }
 
   const filteredLogs = modLogs.filter(
     (log) =>
+      (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.user_id.includes(searchTerm) ||
-      log.moderator_id.includes(searchTerm) ||
-      (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())),
+      log.moderator_id.includes(searchTerm),
   )
+
+  const parseDetails = (details: any) => {
+    if (typeof details === "string") {
+      try {
+        return JSON.parse(details)
+      } catch {
+        return { reason: details }
+      }
+    }
+    return details || {}
+  }
+
+  const formatDetails = (details: any) => {
+    const parsed = parseDetails(details)
+
+    if (!parsed || Object.keys(parsed).length === 0) {
+      return "No details provided"
+    }
+
+    // Handle common detail fields with nice formatting
+    const formattedDetails = []
+
+    if (parsed.reason || parsed.original_reason) {
+      formattedDetails.push(`Reason: ${parsed.reason || parsed.original_reason}`)
+    }
+
+    if (parsed.duration) {
+      formattedDetails.push(`Duration: ${parsed.duration}`)
+    }
+
+    if (parsed.expires_at) {
+      formattedDetails.push(`Expires: ${new Date(parsed.expires_at).toLocaleString()}`)
+    }
+
+    if (parsed.channel_id) {
+      formattedDetails.push(`Channel: ${parsed.channel_id}`)
+    }
+
+    if (parsed.message_id) {
+      formattedDetails.push(`Message: ${parsed.message_id}`)
+    }
+
+    // Add any other fields that weren't handled above
+    Object.entries(parsed).forEach(([key, value]) => {
+      if (!["reason", "original_reason", "duration", "expires_at", "channel_id", "message_id"].includes(key)) {
+        formattedDetails.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${String(value)}`)
+      }
+    })
+
+    return formattedDetails.length > 0 ? formattedDetails.join(" • ") : "No details provided"
+  }
 
   if (loading) {
     return (
@@ -115,7 +169,7 @@ export function ModerationTable() {
           <div>
             <CardTitle className="text-white">Moderation Logs</CardTitle>
             <CardDescription className="text-emerald-200/80">
-              Recent moderation actions and their details
+              View all moderation actions taken across your servers
             </CardDescription>
           </div>
           <Button
@@ -145,77 +199,60 @@ export function ModerationTable() {
         {filteredLogs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No moderation logs found matching your search." : "No moderation logs found."}
+              {searchTerm ? "No logs found matching your search." : "No moderation logs found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">
-                Moderation actions will appear here once they are performed.
-              </p>
+              <p className="text-sm text-emerald-300/40">Moderation logs will appear here when actions are taken.</p>
             )}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
-                <TableHead className="text-emerald-200">Action</TableHead>
                 <TableHead className="text-emerald-200">User</TableHead>
+                <TableHead className="text-emerald-200">Action</TableHead>
                 <TableHead className="text-emerald-200">Moderator</TableHead>
                 <TableHead className="text-emerald-200">Details</TableHead>
-                <TableHead className="text-emerald-200">Date</TableHead>
+                <TableHead className="text-emerald-200">Guild</TableHead>
+                <TableHead className="text-emerald-200">Time</TableHead>
+                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLogs.map((log) => (
                 <TableRow key={log.id} className="border-emerald-400/20 hover:bg-white/5">
                   <TableCell>
+                    <div>
+                      <div className="font-medium text-white">{log.user_username || "Unknown User"}</div>
+                      <div className="text-xs text-emerald-300/60 font-mono">{log.user_id}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="outline" className={getActionColor(log.action)}>
-                      <Shield className="w-3 h-3 mr-1" />
                       {log.action}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-emerald-400/60" />
-                      <div>
-                        <p className="font-medium text-white">{log.user_username || "Unknown User"}</p>
-                        <p className="text-xs text-emerald-200/60 font-mono">{log.user_id}</p>
-                      </div>
+                    <div>
+                      <div className="text-emerald-200">{log.moderator_username || "Unknown Moderator"}</div>
+                      <div className="text-xs text-emerald-300/60 font-mono">{log.moderator_id}</div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-emerald-400/60" />
-                      <div>
-                        <p className="font-medium text-white">{log.moderator_username || "Unknown Moderator"}</p>
-                        <p className="text-xs text-emerald-200/60 font-mono">{log.moderator_id}</p>
-                      </div>
-                    </div>
+                  <TableCell className="text-emerald-200/80 max-w-md">
+                    <div className="text-sm break-words">{formatDetails(log.details)}</div>
                   </TableCell>
-                  <TableCell>
-                    <div className="max-w-xs">
-                      {log.details && typeof log.details === "object" ? (
-                        <div className="text-sm text-emerald-200/80">
-                          {Object.entries(log.details).map(([key, value]) => (
-                            <div key={key} className="mb-1">
-                              <span className="font-medium">{key}:</span> {String(value)}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-emerald-200/80">
-                          {log.details ? String(log.details) : "No details"}
-                        </p>
-                      )}
-                    </div>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">{log.guild_id}</TableCell>
+                  <TableCell className="text-emerald-200/80">
+                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-emerald-200/80">
-                      <Calendar className="w-4 h-4" />
-                      <div>
-                        <p className="text-sm">{new Date(log.created_at).toLocaleDateString()}</p>
-                        <p className="text-xs text-emerald-200/60">{new Date(log.created_at).toLocaleTimeString()}</p>
-                      </div>
-                    </div>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

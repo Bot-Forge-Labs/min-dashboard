@@ -3,21 +3,42 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Megaphone, User, Calendar, Hash, Trash2, Loader2, RefreshCw } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Search, Eye, Edit, Trash2, MoreHorizontal, Loader2, RefreshCw, Plus } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase/client"
-import type { Announcement } from "@/lib/types/database"
+import type { Announcement, Guild } from "@/lib/types/database"
 import { toast } from "sonner"
 
 export function AnnouncementsTable() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [guilds, setGuilds] = useState<Guild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [refreshing, setRefreshing] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [newAnnouncement, setNewAnnouncement] = useState({
+    title: "",
+    content: "",
+    guild_id: "",
+    channel_id: "",
+    embed_color: 9166521, // Default emerald color
+  })
 
-  const fetchAnnouncements = async () => {
+  const fetchData = async () => {
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -25,22 +46,28 @@ export function AnnouncementsTable() {
         return
       }
 
-      const { data, error } = await supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100)
+      const [announcementsResult, guildsResult] = await Promise.all([
+        supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+        supabase.from("guilds").select("*").order("created_at", { ascending: false }),
+      ])
 
-      if (error) {
-        console.error("Error fetching announcements:", error)
+      if (announcementsResult.error) {
+        console.error("Error fetching announcements:", announcementsResult.error)
         toast.error("Failed to fetch announcements")
         return
       }
 
-      setAnnouncements(data || [])
+      if (guildsResult.error) {
+        console.error("Error fetching guilds:", guildsResult.error)
+        toast.error("Failed to fetch guilds")
+        return
+      }
 
-      if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} announcements`)
+      setAnnouncements(announcementsResult.data || [])
+      setGuilds(guildsResult.data || [])
+
+      if (announcementsResult.data && announcementsResult.data.length > 0) {
+        toast.success(`Loaded ${announcementsResult.data.length} announcements`)
       }
     } catch (error) {
       console.error("Error fetching announcements:", error)
@@ -52,12 +79,51 @@ export function AnnouncementsTable() {
   }
 
   useEffect(() => {
-    fetchAnnouncements()
+    fetchData()
   }, [])
 
   const handleRefresh = () => {
     setRefreshing(true)
-    fetchAnnouncements()
+    fetchData()
+  }
+
+  const handleCreateAnnouncement = async () => {
+    try {
+      const supabase = createClient()
+      if (!supabase) {
+        toast.error("Supabase client not available")
+        return
+      }
+
+      const { error } = await supabase.from("announcements").insert({
+        title: newAnnouncement.title,
+        content: newAnnouncement.content,
+        guild_id: newAnnouncement.guild_id,
+        channel_id: newAnnouncement.channel_id,
+        embed_color: newAnnouncement.embed_color,
+        created_by: "dashboard_user", // You might want to get this from auth
+      })
+
+      if (error) {
+        console.error("Error creating announcement:", error)
+        toast.error(`Failed to create announcement: ${error.message}`)
+        return
+      }
+
+      toast.success("Announcement created successfully")
+      setIsCreateDialogOpen(false)
+      setNewAnnouncement({
+        title: "",
+        content: "",
+        guild_id: "",
+        channel_id: "",
+        embed_color: 9166521,
+      })
+      fetchData()
+    } catch (error) {
+      console.error("Error creating announcement:", error)
+      toast.error("Failed to create announcement")
+    }
   }
 
   const handleDeleteAnnouncement = async (announcementId: number) => {
@@ -77,7 +143,7 @@ export function AnnouncementsTable() {
       }
 
       toast.success("Announcement deleted successfully")
-      fetchAnnouncements()
+      fetchData() // Refresh the list
     } catch (error) {
       console.error("Error deleting announcement:", error)
       toast.error("Failed to delete announcement")
@@ -88,8 +154,7 @@ export function AnnouncementsTable() {
     (announcement) =>
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      announcement.created_by.includes(searchTerm) ||
-      announcement.channel_id.includes(searchTerm),
+      announcement.created_by.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   if (loading) {
@@ -111,18 +176,147 @@ export function AnnouncementsTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Announcements</CardTitle>
-            <CardDescription className="text-emerald-200/80">Manage server announcements and messages</CardDescription>
+            <CardDescription className="text-emerald-200/80">
+              Manage server announcements and embedded messages
+            </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Announcement
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create New Announcement</DialogTitle>
+                  <DialogDescription className="text-emerald-200/80">
+                    Create a new announcement for your server.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="guildSelect" className="text-emerald-200">
+                      Guild
+                    </Label>
+                    <select
+                      id="guildSelect"
+                      value={newAnnouncement.guild_id}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, guild_id: e.target.value })}
+                      className="w-full mt-1 p-2 bg-white/5 border border-emerald-400/20 rounded-md text-white"
+                    >
+                      <option value="">Select a guild</option>
+                      {guilds.map((guild) => (
+                        <option key={guild.guild_id} value={guild.guild_id} className="bg-gray-800">
+                          {guild.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="title" className="text-emerald-200">
+                      Title
+                    </Label>
+                    <Input
+                      id="title"
+                      value={newAnnouncement.title}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                      className="bg-white/5 border-emerald-400/20 text-white"
+                      placeholder="Enter announcement title"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="content" className="text-emerald-200">
+                      Content
+                    </Label>
+                    <Textarea
+                      id="content"
+                      value={newAnnouncement.content}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
+                      className="bg-white/5 border-emerald-400/20 text-white"
+                      placeholder="Enter announcement content"
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="channelId" className="text-emerald-200">
+                      Channel ID
+                    </Label>
+                    <Input
+                      id="channelId"
+                      value={newAnnouncement.channel_id}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, channel_id: e.target.value })}
+                      className="bg-white/5 border-emerald-400/20 text-white"
+                      placeholder="Enter channel ID"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="embedColor" className="text-emerald-200">
+                      Embed Color
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="embedColor"
+                        type="color"
+                        value={`#${newAnnouncement.embed_color.toString(16).padStart(6, "0")}`}
+                        onChange={(e) =>
+                          setNewAnnouncement({
+                            ...newAnnouncement,
+                            embed_color: Number.parseInt(e.target.value.replace("#", ""), 16),
+                          })
+                        }
+                        className="w-16 h-10 bg-white/5 border-emerald-400/20"
+                      />
+                      <Input
+                        value={newAnnouncement.embed_color}
+                        onChange={(e) =>
+                          setNewAnnouncement({
+                            ...newAnnouncement,
+                            embed_color: Number.parseInt(e.target.value) || 9166521,
+                          })
+                        }
+                        className="bg-white/5 border-emerald-400/20 text-white"
+                        placeholder="Color as number"
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateAnnouncement}
+                    disabled={
+                      !newAnnouncement.title ||
+                      !newAnnouncement.content ||
+                      !newAnnouncement.guild_id ||
+                      !newAnnouncement.channel_id
+                    }
+                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+                  >
+                    Create Announcement
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         <div className="flex items-center gap-4 pt-4">
           <div className="relative flex-1 max-w-sm">
@@ -143,7 +337,7 @@ export function AnnouncementsTable() {
               {searchTerm ? "No announcements found matching your search." : "No announcements found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Server announcements will appear here when created.</p>
+              <p className="text-sm text-emerald-300/40">Announcements will appear here when they are created.</p>
             )}
           </div>
         ) : (
@@ -153,76 +347,61 @@ export function AnnouncementsTable() {
                 <TableHead className="text-emerald-200">Title</TableHead>
                 <TableHead className="text-emerald-200">Content</TableHead>
                 <TableHead className="text-emerald-200">Channel</TableHead>
-                <TableHead className="text-emerald-200">Creator</TableHead>
-                <TableHead className="text-emerald-200">Color</TableHead>
+                <TableHead className="text-emerald-200">Created By</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
+                <TableHead className="text-emerald-200">Color</TableHead>
                 <TableHead className="text-emerald-200 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAnnouncements.map((announcement) => (
                 <TableRow key={announcement.id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Megaphone className="w-4 h-4 text-emerald-400/60" />
-                      <p className="font-medium text-white">{announcement.title}</p>
-                    </div>
+                  <TableCell className="font-medium text-white max-w-xs">{announcement.title}</TableCell>
+                  <TableCell className="text-emerald-200/80 max-w-md truncate">{announcement.content}</TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.channel_id}</TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.created_by}</TableCell>
+                  <TableCell className="text-emerald-200/80">
+                    {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">{announcement.content}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-emerald-400/60" />
-                      <p className="font-medium text-white font-mono text-sm">{announcement.channel_id}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-emerald-400/60" />
-                      <p className="font-medium text-white font-mono text-sm">{announcement.created_by}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {announcement.embed_color ? (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border border-emerald-400/20"
-                          style={{
-                            backgroundColor: `#${announcement.embed_color.toString(16).padStart(6, "0")}`,
-                          }}
-                        />
-                        <span className="font-mono text-emerald-200/80 text-sm">
-                          #{announcement.embed_color.toString(16).padStart(6, "0")}
-                        </span>
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="bg-gray-500/10 text-gray-400 border-gray-500/20">
-                        Default
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-emerald-200/80">
-                      <Calendar className="w-4 h-4" />
-                      <div>
-                        <p className="text-sm">{new Date(announcement.created_at).toLocaleDateString()}</p>
-                        <p className="text-xs text-emerald-200/60">
-                          {new Date(announcement.created_at).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
+                    <div
+                      className="w-6 h-6 rounded border border-emerald-400/20"
+                      style={{
+                        backgroundColor: announcement.embed_color
+                          ? `#${announcement.embed_color.toString(16).padStart(6, "0")}`
+                          : "#8be2b9",
+                      }}
+                    />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteAnnouncement(announcement.id)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-400 hover:bg-red-500/10"
+                          onClick={() => handleDeleteAnnouncement(announcement.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
