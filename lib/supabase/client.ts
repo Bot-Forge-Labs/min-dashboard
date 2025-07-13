@@ -5,10 +5,12 @@ export function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("Missing Supabase environment variables")
-    throw new Error(
-      "Missing Supabase environment variables. Please check your .env.local file and ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set.",
-    )
+    console.warn("Missing Supabase environment variables")
+    console.warn("NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
+    console.warn("NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
+
+    // Return a mock client that won't cause runtime errors
+    return null
   }
 
   // Validate URL format
@@ -16,8 +18,13 @@ export function createClient() {
     new URL(supabaseUrl)
   } catch {
     console.error("Invalid Supabase URL format:", supabaseUrl)
-    throw new Error("Invalid Supabase URL format. Please check your NEXT_PUBLIC_SUPABASE_URL environment variable.")
+    return null
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  try {
+    return createBrowserClient(supabaseUrl, supabaseAnonKey)
+  } catch (error) {
+    console.error("Failed to create Supabase client:", error)
+    return null
+  }
 }

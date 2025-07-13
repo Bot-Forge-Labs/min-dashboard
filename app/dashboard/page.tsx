@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SetupBanner } from "@/components/setup-banner"
 
 // Import components that don't use client-side code during SSR
 function DashboardSkeleton() {
@@ -170,25 +171,8 @@ function SimpleServerOverview() {
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      {/* Setup Banner - Client Component */}
-      <Card className="bg-yellow-500/10 border-yellow-500/20 mb-6">
-        <CardContent className="flex items-center gap-4 p-4">
-          <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
-          </svg>
-          <div className="flex-1">
-            <h3 className="text-yellow-200 font-medium">Dashboard Ready</h3>
-            <p className="text-yellow-200/70 text-sm">
-              Your dashboard is deployed and ready to use. Configure Supabase to see real data.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Dynamic Setup Banner - Client Component */}
+      <SetupBanner />
 
       <div className="flex items-center justify-between">
         <div>

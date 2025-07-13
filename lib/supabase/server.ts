@@ -7,7 +7,8 @@ export async function createClient() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn("Supabase environment variables not configured")
-    // Return a mock client that won't cause build errors
+    console.warn("NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
+    console.warn("NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
     return null
   }
 
