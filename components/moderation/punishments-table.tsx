@@ -6,8 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, X, Eye, Loader2, RefreshCw } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { Search, Shield, User, Calendar, Clock, X, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Punishment } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -39,6 +38,7 @@ export function PunishmentsTable() {
       }
 
       setPunishments(data || [])
+
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} punishments`)
       }
@@ -77,42 +77,33 @@ export function PunishmentsTable() {
       }
 
       toast.success("Punishment revoked successfully")
-      fetchPunishments() // Refresh the list
+      fetchPunishments()
     } catch (error) {
       console.error("Error revoking punishment:", error)
       toast.error("Failed to revoke punishment")
     }
   }
 
-  const filteredPunishments = punishments.filter(
-    (punishment) =>
-      punishment.user_id.includes(searchTerm) ||
-      punishment.command_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      punishment.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      punishment.moderator_id.includes(searchTerm),
-  )
-
   const getCommandColor = (command: string) => {
     switch (command.toLowerCase()) {
       case "ban":
         return "bg-red-500/10 text-red-400 border-red-500/20"
-      case "kick":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
-      case "warn":
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-      case "timeout":
       case "mute":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+      case "warning":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     }
   }
 
-  const isExpired = (expiresAt: string | null) => {
-    if (!expiresAt) return false
-    return new Date(expiresAt) < new Date()
-  }
+  const filteredPunishments = punishments.filter(
+    (punishment) =>
+      punishment.command_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      punishment.user_id.includes(searchTerm) ||
+      punishment.moderator_id.includes(searchTerm) ||
+      punishment.reason.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   if (loading) {
     return (
@@ -133,9 +124,7 @@ export function PunishmentsTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Active Punishments</CardTitle>
-            <CardDescription className="text-emerald-200/80">
-              Manage active punishments and their expiration
-            </CardDescription>
+            <CardDescription className="text-emerald-200/80">Manage and track user punishments</CardDescription>
           </div>
           <Button
             variant="outline"
@@ -167,17 +156,17 @@ export function PunishmentsTable() {
               {searchTerm ? "No punishments found matching your search." : "No punishments found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Punishments will appear here when users are moderated.</p>
+              <p className="text-sm text-emerald-300/40">User punishments will appear here when issued.</p>
             )}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
-                <TableHead className="text-emerald-200">User ID</TableHead>
                 <TableHead className="text-emerald-200">Type</TableHead>
-                <TableHead className="text-emerald-200">Reason</TableHead>
+                <TableHead className="text-emerald-200">User</TableHead>
                 <TableHead className="text-emerald-200">Moderator</TableHead>
+                <TableHead className="text-emerald-200">Reason</TableHead>
                 <TableHead className="text-emerald-200">Issued</TableHead>
                 <TableHead className="text-emerald-200">Expires</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
@@ -185,64 +174,88 @@ export function PunishmentsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPunishments.map((punishment) => {
-                const expired = isExpired(punishment.expires_at)
-                const actuallyActive = punishment.active && !expired
-
-                return (
-                  <TableRow key={punishment.id} className="border-emerald-400/20 hover:bg-white/5">
-                    <TableCell className="font-mono text-white">{punishment.user_id}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getCommandColor(punishment.command_name)}>
-                        {punishment.command_name}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-emerald-200/80 max-w-xs truncate">{punishment.reason}</TableCell>
-                    <TableCell className="text-emerald-200/80 font-mono text-sm">{punishment.moderator_id}</TableCell>
-                    <TableCell className="text-emerald-200/80">
-                      {formatDistanceToNow(new Date(punishment.issued_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="text-emerald-200/80">
-                      {punishment.expires_at
-                        ? formatDistanceToNow(new Date(punishment.expires_at), { addSuffix: true })
-                        : "Permanent"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          actuallyActive
-                            ? "bg-red-500/10 text-red-400 border-red-500/20"
-                            : "bg-green-500/10 text-green-400 border-green-500/20"
-                        }
-                      >
-                        {actuallyActive ? "Active" : expired ? "Expired" : "Revoked"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {actuallyActive && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            onClick={() => handleRevokePunishment(punishment.id)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
+              {filteredPunishments.map((punishment) => (
+                <TableRow key={punishment.id} className="border-emerald-400/20 hover:bg-white/5">
+                  <TableCell>
+                    <Badge variant="outline" className={getCommandColor(punishment.command_name)}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {punishment.command_name}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-400/60" />
+                      <div>
+                        <p className="font-medium text-white font-mono text-sm">{punishment.user_id}</p>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-400/60" />
+                      <div>
+                        <p className="font-medium text-white font-mono text-sm">{punishment.moderator_id}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">{punishment.reason}</p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-emerald-200/80">
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm">{new Date(punishment.issued_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-emerald-200/60">
+                          {new Date(punishment.issued_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {punishment.expires_at ? (
+                      <div className="flex items-center gap-2 text-emerald-200/80">
+                        <Clock className="w-4 h-4" />
+                        <div>
+                          <p className="text-sm">{new Date(punishment.expires_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-emerald-200/60">
+                            {new Date(punishment.expires_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                        Permanent
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        punishment.active
+                          ? "bg-red-500/10 text-red-400 border-red-500/20"
+                          : "bg-green-500/10 text-green-400 border-green-500/20"
+                      }
+                    >
+                      {punishment.active ? "Active" : "Revoked"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {punishment.active && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRevokePunishment(punishment.id)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Revoke
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}

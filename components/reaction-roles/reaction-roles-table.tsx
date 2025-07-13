@@ -5,9 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Eye, Edit, Trash2, MoreHorizontal, Loader2, RefreshCw } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Search, Smile, Hash, User, Calendar, Trash2, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { ReactionRole } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -30,6 +28,7 @@ export function ReactionRolesTable() {
         .from("reaction_roles")
         .select("*")
         .order("created_at", { ascending: false })
+        .limit(100)
 
       if (error) {
         console.error("Error fetching reaction roles:", error)
@@ -38,6 +37,7 @@ export function ReactionRolesTable() {
       }
 
       setReactionRoles(data || [])
+
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} reaction roles`)
       }
@@ -76,7 +76,7 @@ export function ReactionRolesTable() {
       }
 
       toast.success("Reaction role deleted successfully")
-      fetchReactionRoles() // Refresh the list
+      fetchReactionRoles()
     } catch (error) {
       console.error("Error deleting reaction role:", error)
       toast.error("Failed to delete reaction role")
@@ -84,11 +84,11 @@ export function ReactionRolesTable() {
   }
 
   const filteredReactionRoles = reactionRoles.filter(
-    (role) =>
-      role.emoji.includes(searchTerm) ||
-      role.role_id.includes(searchTerm) ||
-      role.guild_id.includes(searchTerm) ||
-      role.message_id.includes(searchTerm),
+    (reactionRole) =>
+      reactionRole.emoji.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reactionRole.role_id.includes(searchTerm) ||
+      reactionRole.channel_id.includes(searchTerm) ||
+      reactionRole.message_id.includes(searchTerm),
   )
 
   if (loading) {
@@ -111,7 +111,7 @@ export function ReactionRolesTable() {
           <div>
             <CardTitle className="text-white">Reaction Roles</CardTitle>
             <CardDescription className="text-emerald-200/80">
-              Manage reaction role assignments and embeds
+              Manage emoji-to-role assignments for your server
             </CardDescription>
           </div>
           <Button
@@ -144,7 +144,7 @@ export function ReactionRolesTable() {
               {searchTerm ? "No reaction roles found matching your search." : "No reaction roles found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Reaction roles will appear here when they are created.</p>
+              <p className="text-sm text-emerald-300/40">Reaction roles will appear here when created.</p>
             )}
           </div>
         ) : (
@@ -153,53 +153,61 @@ export function ReactionRolesTable() {
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
                 <TableHead className="text-emerald-200">Emoji</TableHead>
                 <TableHead className="text-emerald-200">Role ID</TableHead>
+                <TableHead className="text-emerald-200">Channel</TableHead>
                 <TableHead className="text-emerald-200">Message ID</TableHead>
-                <TableHead className="text-emerald-200">Channel ID</TableHead>
                 <TableHead className="text-emerald-200">Guild ID</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
                 <TableHead className="text-emerald-200 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredReactionRoles.map((role) => (
-                <TableRow key={role.id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell className="text-2xl">{role.emoji}</TableCell>
-                  <TableCell className="font-mono text-emerald-200/80">{role.role_id}</TableCell>
-                  <TableCell className="font-mono text-emerald-200/80">{role.message_id}</TableCell>
-                  <TableCell className="font-mono text-emerald-200/80">{role.channel_id}</TableCell>
-                  <TableCell className="font-mono text-emerald-200/80">{role.guild_id}</TableCell>
-                  <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(role.created_at), { addSuffix: true })}
+              {filteredReactionRoles.map((reactionRole) => (
+                <TableRow key={reactionRole.id} className="border-emerald-400/20 hover:bg-white/5">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Smile className="w-4 h-4 text-emerald-400/60" />
+                      <span className="text-lg">{reactionRole.emoji}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white font-mono text-sm">{reactionRole.role_id}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white font-mono text-sm">{reactionRole.channel_id}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <p className="font-mono text-emerald-200/80 text-sm">{reactionRole.message_id}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="font-mono text-emerald-200/80 text-sm">{reactionRole.guild_id}</p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-emerald-200/80">
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm">{new Date(reactionRole.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-emerald-200/60">
+                          {new Date(reactionRole.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
-                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-400 hover:bg-red-500/10"
-                          onClick={() => handleDeleteReactionRole(role.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteReactionRole(reactionRole.id)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

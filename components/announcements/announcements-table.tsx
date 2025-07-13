@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Eye, Edit, Trash2, MoreHorizontal, Loader2, RefreshCw } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Search, Megaphone, User, Calendar, Hash, Trash2, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Announcement } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -26,7 +25,11 @@ export function AnnouncementsTable() {
         return
       }
 
-      const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100)
 
       if (error) {
         console.error("Error fetching announcements:", error)
@@ -35,6 +38,7 @@ export function AnnouncementsTable() {
       }
 
       setAnnouncements(data || [])
+
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} announcements`)
       }
@@ -73,7 +77,7 @@ export function AnnouncementsTable() {
       }
 
       toast.success("Announcement deleted successfully")
-      fetchAnnouncements() // Refresh the list
+      fetchAnnouncements()
     } catch (error) {
       console.error("Error deleting announcement:", error)
       toast.error("Failed to delete announcement")
@@ -84,7 +88,8 @@ export function AnnouncementsTable() {
     (announcement) =>
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      announcement.created_by.toLowerCase().includes(searchTerm.toLowerCase()),
+      announcement.created_by.includes(searchTerm) ||
+      announcement.channel_id.includes(searchTerm),
   )
 
   if (loading) {
@@ -106,9 +111,7 @@ export function AnnouncementsTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Announcements</CardTitle>
-            <CardDescription className="text-emerald-200/80">
-              Manage server announcements and embedded messages
-            </CardDescription>
+            <CardDescription className="text-emerald-200/80">Manage server announcements and messages</CardDescription>
           </div>
           <Button
             variant="outline"
@@ -140,7 +143,7 @@ export function AnnouncementsTable() {
               {searchTerm ? "No announcements found matching your search." : "No announcements found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Announcements will appear here when they are created.</p>
+              <p className="text-sm text-emerald-300/40">Server announcements will appear here when created.</p>
             )}
           </div>
         ) : (
@@ -150,61 +153,76 @@ export function AnnouncementsTable() {
                 <TableHead className="text-emerald-200">Title</TableHead>
                 <TableHead className="text-emerald-200">Content</TableHead>
                 <TableHead className="text-emerald-200">Channel</TableHead>
-                <TableHead className="text-emerald-200">Created By</TableHead>
-                <TableHead className="text-emerald-200">Created</TableHead>
+                <TableHead className="text-emerald-200">Creator</TableHead>
                 <TableHead className="text-emerald-200">Color</TableHead>
+                <TableHead className="text-emerald-200">Created</TableHead>
                 <TableHead className="text-emerald-200 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAnnouncements.map((announcement) => (
                 <TableRow key={announcement.id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell className="font-medium text-white max-w-xs">{announcement.title}</TableCell>
-                  <TableCell className="text-emerald-200/80 max-w-md truncate">{announcement.content}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.channel_id}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.created_by}</TableCell>
-                  <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Megaphone className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white">{announcement.title}</p>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <div
-                      className="w-6 h-6 rounded border border-emerald-400/20"
-                      style={{
-                        backgroundColor: announcement.embed_color
-                          ? `#${announcement.embed_color.toString(16).padStart(6, "0")}`
-                          : "#8be2b9",
-                      }}
-                    />
+                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">{announcement.content}</p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white font-mono text-sm">{announcement.channel_id}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white font-mono text-sm">{announcement.created_by}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {announcement.embed_color ? (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-4 h-4 rounded-full border border-emerald-400/20"
+                          style={{
+                            backgroundColor: `#${announcement.embed_color.toString(16).padStart(6, "0")}`,
+                          }}
+                        />
+                        <span className="font-mono text-emerald-200/80 text-sm">
+                          #{announcement.embed_color.toString(16).padStart(6, "0")}
+                        </span>
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="bg-gray-500/10 text-gray-400 border-gray-500/20">
+                        Default
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-emerald-200/80">
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm">{new Date(announcement.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-emerald-200/60">
+                          {new Date(announcement.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
-                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-400 hover:bg-red-500/10"
-                          onClick={() => handleDeleteAnnouncement(announcement.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteAnnouncement(announcement.id)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

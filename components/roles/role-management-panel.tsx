@@ -18,12 +18,13 @@ import {
 } from "@/components/ui/dialog"
 import { Search, Plus, Edit, Trash2, Users, Shield, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import type { Role, UserRole } from "@/lib/types/database"
+import type { Role, UserRole, Guild } from "@/lib/types/database"
 import { toast } from "sonner"
 
 export function RoleManagementPanel() {
   const [roles, setRoles] = useState<Role[]>([])
   const [userRoles, setUserRoles] = useState<UserRole[]>([])
+  const [guilds, setGuilds] = useState<Guild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [refreshing, setRefreshing] = useState(false)
@@ -32,9 +33,10 @@ export function RoleManagementPanel() {
     name: "",
     color: "#8be2b9",
     permissions: 0,
+    guild_id: "",
   })
 
-  const fetchRoles = async () => {
+  const fetchData = async () => {
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -42,9 +44,10 @@ export function RoleManagementPanel() {
         return
       }
 
-      const [rolesResult, userRolesResult] = await Promise.all([
+      const [rolesResult, userRolesResult, guildsResult] = await Promise.all([
         supabase.from("roles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*").order("assigned_at", { ascending: false }),
+        supabase.from("guilds").select("*").order("created_at", { ascending: false }),
       ])
 
       if (rolesResult.error) {
@@ -59,14 +62,26 @@ export function RoleManagementPanel() {
         return
       }
 
+      if (guildsResult.error) {
+        console.error("Error fetching guilds:", guildsResult.error)
+        toast.error("Failed to fetch guilds")
+        return
+      }
+
       setRoles(rolesResult.data || [])
       setUserRoles(userRolesResult.data || [])
+      setGuilds(guildsResult.data || [])
+
+      // Set default guild if available
+      if (guildsResult.data && guildsResult.data.length > 0 && !newRole.guild_id) {
+        setNewRole((prev) => ({ ...prev, guild_id: guildsResult.data[0].guild_id }))
+      }
 
       if (rolesResult.data && rolesResult.data.length > 0) {
         toast.success(`Loaded ${rolesResult.data.length} roles`)
       }
     } catch (error) {
-      console.error("Error fetching roles:", error)
+      console.error("Error fetching data:", error)
       toast.error("Failed to connect to database")
     } finally {
       setLoading(false)
@@ -75,12 +90,12 @@ export function RoleManagementPanel() {
   }
 
   useEffect(() => {
-    fetchRoles()
+    fetchData()
   }, [])
 
   const handleRefresh = () => {
     setRefreshing(true)
-    fetchRoles()
+    fetchData()
   }
 
   const handleCreateRole = async () => {
@@ -91,11 +106,16 @@ export function RoleManagementPanel() {
         return
       }
 
+      if (!newRole.guild_id) {
+        toast.error("Please select a guild")
+        return
+      }
+
       const colorInt = Number.parseInt(newRole.color.replace("#", ""), 16)
 
       const { error } = await supabase.from("roles").insert({
         role_id: `role_${Date.now()}`, // Generate a unique role ID
-        guild_id: "default_guild", // You might want to make this dynamic
+        guild_id: newRole.guild_id,
         name: newRole.name,
         color: colorInt,
         permissions: newRole.permissions,
@@ -103,14 +123,14 @@ export function RoleManagementPanel() {
 
       if (error) {
         console.error("Error creating role:", error)
-        toast.error("Failed to create role")
+        toast.error(`Failed to create role: ${error.message}`)
         return
       }
 
       toast.success("Role created successfully")
       setIsCreateDialogOpen(false)
-      setNewRole({ name: "", color: "#8be2b9", permissions: 0 })
-      fetchRoles()
+      setNewRole({ name: "", color: "#8be2b9", permissions: 0, guild_id: guilds[0]?.guild_id || "" })
+      fetchData()
     } catch (error) {
       console.error("Error creating role:", error)
       toast.error("Failed to create role")
@@ -134,7 +154,7 @@ export function RoleManagementPanel() {
       }
 
       toast.success("Role deleted successfully")
-      fetchRoles()
+      fetchData()
     } catch (error) {
       console.error("Error deleting role:", error)
       toast.error("Failed to delete role")
@@ -143,6 +163,11 @@ export function RoleManagementPanel() {
 
   const getRoleUserCount = (roleId: string) => {
     return userRoles.filter((ur) => ur.role_id === roleId).length
+  }
+
+  const getGuildName = (guildId: string) => {
+    const guild = guilds.find((g) => g.guild_id === guildId)
+    return guild ? guild.name : guildId
   }
 
   const filteredRoles = roles.filter(
@@ -199,6 +224,24 @@ export function RoleManagementPanel() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
+                    <Label htmlFor="guildSelect" className="text-emerald-200">
+                      Guild
+                    </Label>
+                    <select
+                      id="guildSelect"
+                      value={newRole.guild_id}
+                      onChange={(e) => setNewRole({ ...newRole, guild_id: e.target.value })}
+                      className="w-full mt-1 p-2 bg-white/5 border border-emerald-400/20 rounded-md text-white"
+                    >
+                      <option value="">Select a guild</option>
+                      {guilds.map((guild) => (
+                        <option key={guild.guild_id} value={guild.guild_id} className="bg-gray-800">
+                          {guild.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <Label htmlFor="roleName" className="text-emerald-200">
                       Role Name
                     </Label>
@@ -254,7 +297,7 @@ export function RoleManagementPanel() {
                   </Button>
                   <Button
                     onClick={handleCreateRole}
-                    disabled={!newRole.name}
+                    disabled={!newRole.name || !newRole.guild_id}
                     className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
                   >
                     Create Role
@@ -292,7 +335,7 @@ export function RoleManagementPanel() {
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
                 <TableHead className="text-emerald-200">Role</TableHead>
                 <TableHead className="text-emerald-200">Role ID</TableHead>
-                <TableHead className="text-emerald-200">Guild ID</TableHead>
+                <TableHead className="text-emerald-200">Guild</TableHead>
                 <TableHead className="text-emerald-200">Color</TableHead>
                 <TableHead className="text-emerald-200">Permissions</TableHead>
                 <TableHead className="text-emerald-200">Members</TableHead>
@@ -315,7 +358,7 @@ export function RoleManagementPanel() {
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-emerald-200/80 text-sm">{role.role_id}</TableCell>
-                  <TableCell className="font-mono text-emerald-200/80 text-sm">{role.guild_id}</TableCell>
+                  <TableCell className="text-emerald-200/80 text-sm">{getGuildName(role.guild_id)}</TableCell>
                   <TableCell className="font-mono text-emerald-200/80 text-sm">
                     {role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#8be2b9"}
                   </TableCell>

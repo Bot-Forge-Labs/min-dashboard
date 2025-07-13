@@ -6,10 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Eye, Edit, Trash2, Loader2, RefreshCw, Users } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
+import { Search, Gift, User, Calendar, Clock, Trophy, Trash2, StopCircle, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Giveaway } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -28,7 +25,11 @@ export function GiveawaysTable() {
         return
       }
 
-      const { data, error } = await supabase.from("giveaways").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("giveaways")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100)
 
       if (error) {
         console.error("Error fetching giveaways:", error)
@@ -37,6 +38,7 @@ export function GiveawaysTable() {
       }
 
       setGiveaways(data || [])
+
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} giveaways`)
       }
@@ -58,30 +60,6 @@ export function GiveawaysTable() {
     fetchGiveaways()
   }
 
-  const handleDeleteGiveaway = async (giveawayId: number) => {
-    try {
-      const supabase = createClient()
-      if (!supabase) {
-        toast.error("Supabase client not available")
-        return
-      }
-
-      const { error } = await supabase.from("giveaways").delete().eq("id", giveawayId)
-
-      if (error) {
-        console.error("Error deleting giveaway:", error)
-        toast.error("Failed to delete giveaway")
-        return
-      }
-
-      toast.success("Giveaway deleted successfully")
-      fetchGiveaways() // Refresh the list
-    } catch (error) {
-      console.error("Error deleting giveaway:", error)
-      toast.error("Failed to delete giveaway")
-    }
-  }
-
   const handleEndGiveaway = async (giveawayId: number) => {
     try {
       const supabase = createClient()
@@ -99,31 +77,47 @@ export function GiveawaysTable() {
       }
 
       toast.success("Giveaway ended successfully")
-      fetchGiveaways() // Refresh the list
+      fetchGiveaways()
     } catch (error) {
       console.error("Error ending giveaway:", error)
       toast.error("Failed to end giveaway")
     }
   }
 
+  const handleDeleteGiveaway = async (giveawayId: number) => {
+    try {
+      const supabase = createClient()
+      if (!supabase) {
+        toast.error("Supabase client not available")
+        return
+      }
+
+      const { error } = await supabase.from("giveaways").delete().eq("id", giveawayId)
+
+      if (error) {
+        console.error("Error deleting giveaway:", error)
+        toast.error("Failed to delete giveaway")
+        return
+      }
+
+      toast.success("Giveaway deleted successfully")
+      fetchGiveaways()
+    } catch (error) {
+      console.error("Error deleting giveaway:", error)
+      toast.error("Failed to delete giveaway")
+    }
+  }
+
+  const isGiveawayActive = (giveaway: Giveaway) => {
+    return !giveaway.ended && new Date(giveaway.end_time) > new Date()
+  }
+
   const filteredGiveaways = giveaways.filter(
     (giveaway) =>
       giveaway.prize.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      giveaway.created_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      giveaway.description.toLowerCase().includes(searchTerm.toLowerCase()),
+      giveaway.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      giveaway.created_by.includes(searchTerm),
   )
-
-  const getStatusColor = (ended: boolean, endTime: string) => {
-    if (ended) return "bg-red-500/10 text-red-400 border-red-500/20"
-    if (new Date(endTime) < new Date()) return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-    return "bg-green-500/10 text-green-400 border-green-500/20"
-  }
-
-  const getStatus = (ended: boolean, endTime: string) => {
-    if (ended) return "Ended"
-    if (new Date(endTime) < new Date()) return "Expired"
-    return "Active"
-  }
 
   if (loading) {
     return (
@@ -176,7 +170,7 @@ export function GiveawaysTable() {
               {searchTerm ? "No giveaways found matching your search." : "No giveaways found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Giveaways will appear here when they are created.</p>
+              <p className="text-sm text-emerald-300/40">Server giveaways will appear here when created.</p>
             )}
           </div>
         ) : (
@@ -184,9 +178,10 @@ export function GiveawaysTable() {
             <TableHeader>
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
                 <TableHead className="text-emerald-200">Prize</TableHead>
-                <TableHead className="text-emerald-200">Winners</TableHead>
-                <TableHead className="text-emerald-200">Created By</TableHead>
+                <TableHead className="text-emerald-200">Description</TableHead>
+                <TableHead className="text-emerald-200">Creator</TableHead>
                 <TableHead className="text-emerald-200">Duration</TableHead>
+                <TableHead className="text-emerald-200">Winners</TableHead>
                 <TableHead className="text-emerald-200">End Time</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
                 <TableHead className="text-emerald-200 text-right">Actions</TableHead>
@@ -196,63 +191,80 @@ export function GiveawaysTable() {
               {filteredGiveaways.map((giveaway) => (
                 <TableRow key={giveaway.id} className="border-emerald-400/20 hover:bg-white/5">
                   <TableCell>
-                    <div>
-                      <div className="font-medium text-white">{giveaway.prize}</div>
-                      <div className="text-sm text-emerald-300/60 max-w-xs truncate">{giveaway.description}</div>
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white">{giveaway.prize}</p>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-200">{giveaway.winners_count}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{giveaway.created_by}</TableCell>
-                  <TableCell className="text-emerald-200/80">
-                    {giveaway.duration_minutes ? `${giveaway.duration_minutes} min` : "N/A"}
-                  </TableCell>
-                  <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(giveaway.end_time), { addSuffix: true })}
+                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">{giveaway.description}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getStatusColor(giveaway.ended, giveaway.end_time)}>
-                      {getStatus(giveaway.ended, giveaway.end_time)}
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-400/60" />
+                      <p className="font-medium text-white font-mono text-sm">{giveaway.created_by}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-emerald-400/60" />
+                      <p className="text-sm text-emerald-200/80">
+                        {giveaway.duration_minutes ? `${giveaway.duration_minutes}m` : "N/A"}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                      <Trophy className="w-3 h-3 mr-1" />
+                      {giveaway.winners_count}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-emerald-200/80">
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm">{new Date(giveaway.end_time).toLocaleDateString()}</p>
+                        <p className="text-xs text-emerald-200/60">
+                          {new Date(giveaway.end_time).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        isGiveawayActive(giveaway)
+                          ? "bg-green-500/10 text-green-400 border-green-500/20"
+                          : "bg-red-500/10 text-red-400 border-red-500/20"
+                      }
+                    >
+                      {isGiveawayActive(giveaway) ? "Active" : "Ended"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      {isGiveawayActive(giveaway) && (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
+                          size="sm"
+                          onClick={() => handleEndGiveaway(giveaway.id)}
+                          className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
                         >
-                          <MoreHorizontal className="w-4 h-4" />
+                          <StopCircle className="w-4 h-4 mr-1" />
+                          End
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
-                        <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        {!giveaway.ended && new Date(giveaway.end_time) > new Date() && (
-                          <DropdownMenuItem
-                            className="text-yellow-400 hover:bg-yellow-500/10"
-                            onClick={() => handleEndGiveaway(giveaway.id)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            End Early
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          className="text-red-400 hover:bg-red-500/10"
-                          onClick={() => handleDeleteGiveaway(giveaway.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteGiveaway(giveaway.id)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

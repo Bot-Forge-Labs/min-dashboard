@@ -6,8 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Eye, Loader2, RefreshCw } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { Search, Shield, User, Calendar, Loader2, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { ModLog } from "@/lib/types/database"
 import { toast } from "sonner"
@@ -26,7 +25,7 @@ export function ModerationTable() {
         return
       }
 
-      // Try to fetch from the view first, fallback to regular table
+      // Try the view first, fallback to regular table if view doesn't exist
       let { data, error } = await supabase
         .from("mod_logs_with_usernames")
         .select("*")
@@ -48,6 +47,7 @@ export function ModerationTable() {
       }
 
       setModLogs(data || [])
+
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} moderation logs`)
       }
@@ -69,44 +69,31 @@ export function ModerationTable() {
     fetchModLogs()
   }
 
-  const filteredLogs = modLogs.filter(
-    (log) =>
-      (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.user_id.includes(searchTerm) ||
-      log.moderator_id.includes(searchTerm),
-  )
-
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {
       case "ban":
         return "bg-red-500/10 text-red-400 border-red-500/20"
       case "kick":
         return "bg-orange-500/10 text-orange-400 border-orange-500/20"
-      case "warn":
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-      case "timeout":
       case "mute":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+      case "warning":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
       case "unban":
         return "bg-green-500/10 text-green-400 border-green-500/20"
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     }
   }
 
-  const parseDetails = (details: any) => {
-    if (typeof details === "string") {
-      try {
-        return JSON.parse(details)
-      } catch {
-        return { reason: details }
-      }
-    }
-    return details || {}
-  }
+  const filteredLogs = modLogs.filter(
+    (log) =>
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.user_id.includes(searchTerm) ||
+      log.moderator_id.includes(searchTerm) ||
+      (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())),
+  )
 
   if (loading) {
     return (
@@ -128,7 +115,7 @@ export function ModerationTable() {
           <div>
             <CardTitle className="text-white">Moderation Logs</CardTitle>
             <CardDescription className="text-emerald-200/80">
-              View all moderation actions taken across your servers
+              Recent moderation actions and their details
             </CardDescription>
           </div>
           <Button
@@ -158,71 +145,80 @@ export function ModerationTable() {
         {filteredLogs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No logs found matching your search." : "No moderation logs found."}
+              {searchTerm ? "No moderation logs found matching your search." : "No moderation logs found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Moderation logs will appear here when actions are taken.</p>
+              <p className="text-sm text-emerald-300/40">
+                Moderation actions will appear here once they are performed.
+              </p>
             )}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
-                <TableHead className="text-emerald-200">User</TableHead>
                 <TableHead className="text-emerald-200">Action</TableHead>
+                <TableHead className="text-emerald-200">User</TableHead>
                 <TableHead className="text-emerald-200">Moderator</TableHead>
-                <TableHead className="text-emerald-200">Reason</TableHead>
-                <TableHead className="text-emerald-200">Guild</TableHead>
-                <TableHead className="text-emerald-200">Time</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200">Details</TableHead>
+                <TableHead className="text-emerald-200">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.map((log) => {
-                const details = parseDetails(log.details)
-                return (
-                  <TableRow key={log.id} className="border-emerald-400/20 hover:bg-white/5">
-                    <TableCell>
+              {filteredLogs.map((log) => (
+                <TableRow key={log.id} className="border-emerald-400/20 hover:bg-white/5">
+                  <TableCell>
+                    <Badge variant="outline" className={getActionColor(log.action)}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {log.action}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-400/60" />
                       <div>
-                        <div className="font-medium text-white">{log.user_username || "Unknown User"}</div>
-                        <div className="text-xs text-emerald-300/60 font-mono">{log.user_id}</div>
+                        <p className="font-medium text-white">{log.user_username || "Unknown User"}</p>
+                        <p className="text-xs text-emerald-200/60 font-mono">{log.user_id}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getActionColor(log.action)}>
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-400/60" />
                       <div>
-                        <div className="text-emerald-200">{log.moderator_username || "Unknown Moderator"}</div>
-                        <div className="text-xs text-emerald-300/60 font-mono">{log.moderator_id}</div>
+                        <p className="font-medium text-white">{log.moderator_username || "Unknown Moderator"}</p>
+                        <p className="text-xs text-emerald-200/60 font-mono">{log.moderator_id}</p>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-emerald-200/80 max-w-xs">
-                      <div className="truncate">
-                        {details.reason || details.original_reason || "No reason provided"}
-                      </div>
-                      {details.duration && (
-                        <div className="text-xs text-emerald-300/60">Duration: {details.duration}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-xs">
+                      {log.details && typeof log.details === "object" ? (
+                        <div className="text-sm text-emerald-200/80">
+                          {Object.entries(log.details).map(([key, value]) => (
+                            <div key={key} className="mb-1">
+                              <span className="font-medium">{key}:</span> {String(value)}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-emerald-200/80">
+                          {log.details ? String(log.details) : "No details"}
+                        </p>
                       )}
-                    </TableCell>
-                    <TableCell className="text-emerald-200/80 font-mono text-sm">{log.guild_id}</TableCell>
-                    <TableCell className="text-emerald-200/80">
-                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-emerald-200/80">
+                      <Calendar className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm">{new Date(log.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-emerald-200/60">{new Date(log.created_at).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
