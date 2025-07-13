@@ -4,8 +4,18 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Server, Users, Activity, Zap, Gift, Shield, Megaphone } from "lucide-react"
-import { getDashboardStats } from "@/lib/supabase/queries"
-import type { DashboardStats } from "@/lib/types/database"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+
+interface DashboardStats {
+  total_servers: number
+  total_users: number
+  bot_uptime: number
+  commands_per_day: number
+  active_giveaways: number
+  mod_actions_week: number
+  announcements_month: number
+}
 
 export function StatsCards() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -14,10 +24,78 @@ export function StatsCards() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const data = await getDashboardStats()
-        setStats(data)
+        const supabase = createClient()
+        if (!supabase) {
+          toast.error("Database connection failed")
+          setLoading(false)
+          return
+        }
+
+        const defaultStats = {
+          total_servers: 0,
+          total_users: 0,
+          bot_uptime: 0,
+          commands_per_day: 0,
+          active_giveaways: 0,
+          mod_actions_week: 0,
+          announcements_month: 0,
+        }
+
+        // Get total servers from guild_settings (actual connected servers)
+        const { count: serverCount } = await supabase.from("guild_settings").select("*", { count: "exact", head: true })
+
+        // Get total users
+        const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true })
+
+        // Get total commands usage
+        const { data: commandsData } = await supabase.from("commands").select("usage_count")
+        const totalCommandUsage = commandsData?.reduce((sum, cmd) => sum + cmd.usage_count, 0) || 0
+
+        // Get active giveaways
+        const { count: activeGiveaways } = await supabase
+          .from("giveaways")
+          .select("*", { count: "exact", head: true })
+          .eq("ended", false)
+
+        // Get mod actions this week
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+
+        const { count: modActionsWeek } = await supabase
+          .from("mod_logs")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", weekAgo.toISOString())
+
+        // Get announcements this month
+        const monthAgo = new Date()
+        monthAgo.setMonth(monthAgo.getMonth() - 1)
+
+        const { count: announcementsMonth } = await supabase
+          .from("announcements")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", monthAgo.toISOString())
+
+        setStats({
+          total_servers: serverCount || 0,
+          total_users: userCount || 0,
+          bot_uptime: 99.9, // This would come from your bot's actual uptime
+          commands_per_day: Math.floor(totalCommandUsage / 30), // Rough estimate
+          active_giveaways: activeGiveaways || 0,
+          mod_actions_week: modActionsWeek || 0,
+          announcements_month: announcementsMonth || 0,
+        })
       } catch (error) {
         console.error("Error fetching stats:", error)
+        toast.error("Failed to fetch dashboard stats")
+        setStats({
+          total_servers: 0,
+          total_users: 0,
+          bot_uptime: 0,
+          commands_per_day: 0,
+          active_giveaways: 0,
+          mod_actions_week: 0,
+          announcements_month: 0,
+        })
       } finally {
         setLoading(false)
       }
