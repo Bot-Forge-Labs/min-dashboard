@@ -1,6 +1,19 @@
 "use client"
 
-import { Bot, Server, Zap, Shield, Gift, MessageSquare, Users, Settings, BarChart3, Home, Smile } from "lucide-react"
+import {
+  Bot,
+  Server,
+  Zap,
+  Shield,
+  Gift,
+  MessageSquare,
+  Users,
+  Settings,
+  BarChart3,
+  Home,
+  Smile,
+  UserCog,
+} from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +72,11 @@ const menuItems = [
     icon: Users,
   },
   {
+    title: "Roles",
+    url: "/dashboard/roles",
+    icon: UserCog,
+  },
+  {
     title: "Analytics",
     url: "/dashboard/analytics",
     icon: BarChart3,
@@ -78,7 +96,11 @@ export function AppSidebar() {
           <div className="relative">
             <div className="absolute inset-0 bg-emerald-400/20 rounded-lg blur-sm"></div>
             <div className="relative bg-gradient-to-br from-emerald-400 to-green-400 p-2 rounded-lg shadow-lg">
-              <img src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png" className="w-10 h-10" alt="" />
+             <img
+                    src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"
+                    alt="Minbot"
+                    className="w-16 h-16 object-contain transition-transform duration-500 hover:scale-110"
+                  />
             </div>
           </div>
           <div>
