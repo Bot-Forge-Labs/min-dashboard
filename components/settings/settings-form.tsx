@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { Save, RefreshCw, User, Settings, Shield, Bell } from "lucide-react"
+import { Save, RefreshCw, User, Settings, Shield, Bell, MessageSquare, Calendar, Activity } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
 
 interface UserProfile {
   id: string
@@ -20,9 +21,23 @@ interface UserProfile {
   discriminator: string
   avatar: string
   banner?: string
-  roles: string[]
+  roles: Array<{
+    id: string
+    name: string
+    color: string
+    position: number
+  }>
   messageCount: number
   joinedAt: string
+  lastActive: string
+  channelActivity: Array<{
+    channelId: string
+    channelName: string
+    messageCount: number
+  }>
+  status: "online" | "idle" | "dnd" | "offline"
+  level: number
+  xp: number
 }
 
 interface BotSettings {
@@ -34,6 +49,9 @@ interface BotSettings {
   antiSpam: boolean
   autoRole: boolean
   levelingSystem: boolean
+  musicEnabled: boolean
+  economyEnabled: boolean
+  ticketSystem: boolean
 }
 
 export function SettingsForm() {
@@ -47,6 +65,9 @@ export function SettingsForm() {
     antiSpam: true,
     autoRole: false,
     levelingSystem: true,
+    musicEnabled: true,
+    economyEnabled: false,
+    ticketSystem: true,
   })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -58,20 +79,113 @@ export function SettingsForm() {
 
   const fetchUserProfile = async () => {
     try {
-      // This would typically fetch from your auth system or Discord API
-      // For now, we'll use mock data
-      setUserProfile({
-        id: "123456789012345678",
-        username: "DashboardUser",
-        discriminator: "1234",
-        avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
-        banner: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&h=200&fit=crop",
-        roles: ["Administrator", "Moderator", "VIP"],
-        messageCount: 1250,
-        joinedAt: "2023-01-15T10:30:00Z",
-      })
+      const supabase = createClient()
+      if (!supabase) {
+        toast.error("Database connection failed")
+        return
+      }
+
+      // Get current user from auth
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error("User not authenticated")
+        return
+      }
+
+      // Fetch user profile from database
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select(`
+          *,
+          user_roles (
+            roles (
+              id,
+              name,
+              color,
+              position
+            )
+          )
+        `)
+        .eq("id", user.id)
+        .single()
+
+      if (userError && userError.code !== "PGRST116") {
+        console.error("Error fetching user profile:", userError)
+        // Use Discord API as fallback
+        await fetchDiscordProfile(user.id)
+        return
+      }
+
+      if (userData) {
+        // Fetch channel activity
+        const { data: channelData } = await supabase
+          .from("user_messages")
+          .select(`
+            channel_id,
+            channels (name),
+            count
+          `)
+          .eq("user_id", user.id)
+          .order("count", { ascending: false })
+          .limit(5)
+
+        setUserProfile({
+          id: userData.id,
+          username: userData.username,
+          discriminator: userData.discriminator || "0000",
+          avatar:
+            userData.avatar_url || `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`,
+          banner: userData.banner_url,
+          roles: userData.user_roles?.map((ur: any) => ur.roles) || [],
+          messageCount: userData.message_count || 0,
+          joinedAt: userData.joined_at,
+          lastActive: userData.last_active || new Date().toISOString(),
+          channelActivity:
+            channelData?.map((ch: any) => ({
+              channelId: ch.channel_id,
+              channelName: ch.channels?.name || "Unknown Channel",
+              messageCount: ch.count,
+            })) || [],
+          status: userData.status || "offline",
+          level: userData.level || 1,
+          xp: userData.xp || 0,
+        })
+      }
     } catch (error) {
       console.error("Error fetching user profile:", error)
+      toast.error("Failed to load user profile")
+    }
+  }
+
+  const fetchDiscordProfile = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/discord/user/${userId}`)
+      if (!response.ok) throw new Error("Failed to fetch Discord profile")
+
+      const discordUser = await response.json()
+      setUserProfile({
+        id: discordUser.id,
+        username: discordUser.username,
+        discriminator: discordUser.discriminator,
+        avatar: discordUser.avatar
+          ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+          : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`,
+        banner: discordUser.banner
+          ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.png`
+          : undefined,
+        roles: [],
+        messageCount: 0,
+        joinedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+        channelActivity: [],
+        status: "offline",
+        level: 1,
+        xp: 0,
+      })
+    } catch (error) {
+      console.error("Error fetching Discord profile:", error)
     }
   }
 
@@ -83,7 +197,6 @@ export function SettingsForm() {
         return
       }
 
-      // Fetch bot settings from database
       const { data, error } = await supabase.from("bot_settings").select("*").single()
 
       if (error && error.code !== "PGRST116") {
@@ -98,6 +211,9 @@ export function SettingsForm() {
           antiSpam: data.anti_spam || false,
           autoRole: data.auto_role || false,
           levelingSystem: data.leveling_system || false,
+          musicEnabled: data.music_enabled || false,
+          economyEnabled: data.economy_enabled || false,
+          ticketSystem: data.ticket_system || false,
         })
       }
     } catch (error) {
@@ -126,6 +242,9 @@ export function SettingsForm() {
         anti_spam: settings.antiSpam,
         auto_role: settings.autoRole,
         leveling_system: settings.levelingSystem,
+        music_enabled: settings.musicEnabled,
+        economy_enabled: settings.economyEnabled,
+        ticket_system: settings.ticketSystem,
         updated_at: new Date().toISOString(),
       })
 
@@ -134,6 +253,13 @@ export function SettingsForm() {
         toast.error("Failed to save settings")
         return
       }
+
+      // Apply settings to Discord bot via API
+      await fetch("/api/bot/update-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      })
 
       toast.success("Settings saved successfully")
     } catch (error) {
@@ -146,6 +272,25 @@ export function SettingsForm() {
 
   const updateSetting = (key: keyof BotSettings, value: any) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "online":
+        return "bg-green-500"
+      case "idle":
+        return "bg-yellow-500"
+      case "dnd":
+        return "bg-red-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  const getXPProgress = () => {
+    if (!userProfile) return 0
+    const xpForNextLevel = userProfile.level * 1000
+    return (userProfile.xp % 1000) / 10
   }
 
   if (loading) {
@@ -209,42 +354,78 @@ export function SettingsForm() {
                         backgroundPosition: "center",
                       }}
                     />
-                    <Avatar className="absolute -bottom-8 left-6 w-16 h-16 border-4 border-white/20">
-                      <AvatarImage src={userProfile.avatar || "/placeholder.svg"} alt={userProfile.username} />
-                      <AvatarFallback className="bg-emerald-600 text-white">
-                        {userProfile.username.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="absolute -bottom-8 left-6">
+                      <div className="relative">
+                        <Avatar className="w-16 h-16 border-4 border-white/20">
+                          <AvatarImage src={userProfile.avatar || "/placeholder.svg"} alt={userProfile.username} />
+                          <AvatarFallback className="bg-emerald-600 text-white">
+                            {userProfile.username.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div
+                          className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${getStatusColor(userProfile.status)}`}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Profile Info */}
-                  <div className="pt-8 space-y-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-white">
-                        {userProfile.username}#{userProfile.discriminator}
-                      </h3>
-                      <p className="text-emerald-200/80">User ID: {userProfile.id}</p>
+                  <div className="pt-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-white">
+                          {userProfile.username}#{userProfile.discriminator}
+                        </h3>
+                        <p className="text-emerald-200/80">User ID: {userProfile.id}</p>
+                        <p className="text-emerald-300/60 text-sm">
+                          Last active: {formatDistanceToNow(new Date(userProfile.lastActive), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-white">Level {userProfile.level}</div>
+                        <div className="text-sm text-emerald-200/80">{userProfile.xp} XP</div>
+                        <div className="w-32 h-2 bg-white/10 rounded-full mt-1">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-300"
+                            style={{ width: `${getXPProgress()}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Stats */}
+                    {/* Stats Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-white/5 p-4 rounded-lg border border-emerald-400/20">
-                        <div className="text-2xl font-bold text-white">{userProfile.messageCount}</div>
-                        <div className="text-sm text-emerald-200/80">Messages Sent</div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquare className="w-4 h-4 text-emerald-400" />
+                          <div className="text-sm text-emerald-200/80">Messages</div>
+                        </div>
+                        <div className="text-2xl font-bold text-white">{userProfile.messageCount.toLocaleString()}</div>
                       </div>
                       <div className="bg-white/5 p-4 rounded-lg border border-emerald-400/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="w-4 h-4 text-emerald-400" />
+                          <div className="text-sm text-emerald-200/80">Roles</div>
+                        </div>
                         <div className="text-2xl font-bold text-white">{userProfile.roles.length}</div>
-                        <div className="text-sm text-emerald-200/80">Roles</div>
                       </div>
                       <div className="bg-white/5 p-4 rounded-lg border border-emerald-400/20">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-4 h-4 text-emerald-400" />
+                          <div className="text-sm text-emerald-200/80">Days Active</div>
+                        </div>
                         <div className="text-2xl font-bold text-white">
                           {Math.floor((Date.now() - new Date(userProfile.joinedAt).getTime()) / (1000 * 60 * 60 * 24))}
                         </div>
-                        <div className="text-sm text-emerald-200/80">Days Active</div>
                       </div>
                       <div className="bg-white/5 p-4 rounded-lg border border-emerald-400/20">
-                        <div className="text-2xl font-bold text-white">A+</div>
-                        <div className="text-sm text-emerald-200/80">Activity Grade</div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Activity className="w-4 h-4 text-emerald-400" />
+                          <div className="text-sm text-emerald-200/80">Activity</div>
+                        </div>
+                        <div className="text-2xl font-bold text-white">
+                          {userProfile.status === "online" ? "High" : userProfile.status === "idle" ? "Medium" : "Low"}
+                        </div>
                       </div>
                     </div>
 
@@ -252,19 +433,58 @@ export function SettingsForm() {
                     <div>
                       <Label className="text-emerald-200 text-base font-medium">Your Roles</Label>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {userProfile.roles.map((role, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                          >
-                            {role}
-                          </Badge>
-                        ))}
+                        {userProfile.roles
+                          .sort((a, b) => b.position - a.position)
+                          .map((role) => (
+                            <Badge
+                              key={role.id}
+                              variant="outline"
+                              className="border-emerald-500/30"
+                              style={{
+                                backgroundColor: `${role.color}20`,
+                                color: role.color || "#10b981",
+                                borderColor: `${role.color}50`,
+                              }}
+                            >
+                              {role.name}
+                            </Badge>
+                          ))}
+                        {userProfile.roles.length === 0 && (
+                          <span className="text-emerald-300/40">No roles assigned</span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Joined Date */}
+                    {/* Channel Activity */}
+                    <div>
+                      <Label className="text-emerald-200 text-base font-medium">Channel Activity</Label>
+                      <div className="mt-2 space-y-2">
+                        {userProfile.channelActivity.map((channel) => (
+                          <div
+                            key={channel.channelId}
+                            className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-emerald-400/20"
+                          >
+                            <div>
+                              <div className="text-white font-medium">#{channel.channelName}</div>
+                              <div className="text-emerald-300/60 text-sm">{channel.messageCount} messages</div>
+                            </div>
+                            <div className="w-16 h-2 bg-white/10 rounded-full">
+                              <div
+                                className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"
+                                style={{
+                                  width: `${Math.min((channel.messageCount / Math.max(...userProfile.channelActivity.map((c) => c.messageCount))) * 100, 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        {userProfile.channelActivity.length === 0 && (
+                          <div className="text-emerald-300/40 text-center py-4">No channel activity data available</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Member Since */}
                     <div>
                       <Label className="text-emerald-200 text-base font-medium">Member Since</Label>
                       <p className="text-white mt-1">
@@ -272,6 +492,8 @@ export function SettingsForm() {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </p>
                     </div>
@@ -286,9 +508,7 @@ export function SettingsForm() {
           <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
             <CardHeader>
               <CardTitle className="text-white">Bot Configuration</CardTitle>
-              <CardDescription className="text-emerald-200/80">
-                Configure basic bot settings and features
-              </CardDescription>
+              <CardDescription className="text-emerald-200/80">Configure bot settings and features</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -373,6 +593,39 @@ export function SettingsForm() {
                     <Switch
                       checked={settings.levelingSystem}
                       onCheckedChange={(checked) => updateSetting("levelingSystem", checked)}
+                      className="data-[state=checked]:bg-emerald-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-emerald-200">Music System</Label>
+                      <p className="text-sm text-emerald-300/60">Enable music commands and voice features</p>
+                    </div>
+                    <Switch
+                      checked={settings.musicEnabled}
+                      onCheckedChange={(checked) => updateSetting("musicEnabled", checked)}
+                      className="data-[state=checked]:bg-emerald-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-emerald-200">Economy System</Label>
+                      <p className="text-sm text-emerald-300/60">Enable currency and shop features</p>
+                    </div>
+                    <Switch
+                      checked={settings.economyEnabled}
+                      onCheckedChange={(checked) => updateSetting("economyEnabled", checked)}
+                      className="data-[state=checked]:bg-emerald-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-emerald-200">Ticket System</Label>
+                      <p className="text-sm text-emerald-300/60">Enable support ticket creation</p>
+                    </div>
+                    <Switch
+                      checked={settings.ticketSystem}
+                      onCheckedChange={(checked) => updateSetting("ticketSystem", checked)}
                       className="data-[state=checked]:bg-emerald-600"
                     />
                   </div>

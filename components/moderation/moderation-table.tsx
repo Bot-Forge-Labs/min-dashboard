@@ -6,7 +6,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Eye, Loader2, RefreshCw } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Search,
+  Eye,
+  Loader2,
+  RefreshCw,
+  Filter,
+  Ban,
+  UserX,
+  AlertTriangle,
+  Clock,
+  Shield,
+  CheckCircle,
+} from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
 import type { ModLog } from "@/lib/types/database"
@@ -16,7 +29,10 @@ export function ModerationTable() {
   const [modLogs, setModLogs] = useState<ModLog[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [actionFilter, setActionFilter] = useState("all")
+  const [guildFilter, setGuildFilter] = useState("all")
   const [refreshing, setRefreshing] = useState(false)
+  const [guilds, setGuilds] = useState<Array<{ id: string; name: string }>>([])
 
   const fetchModLogs = async () => {
     try {
@@ -36,7 +52,6 @@ export function ModerationTable() {
       // If view doesn't exist, try the regular table
       if (error && error.message.includes("does not exist")) {
         const result = await supabase.from("mod_logs").select("*").order("created_at", { ascending: false }).limit(100)
-
         data = result.data
         error = result.error
       }
@@ -48,6 +63,13 @@ export function ModerationTable() {
       }
 
       setModLogs(data || [])
+
+      // Extract unique guilds for filter
+      const uniqueGuilds = Array.from(new Set(data?.map((log) => log.guild_id) || [])).map((guildId) => ({
+        id: guildId,
+        name: `Guild ${guildId.slice(-4)}`,
+      }))
+      setGuilds(uniqueGuilds)
 
       if (data && data.length > 0) {
         toast.success(`Loaded ${data.length} moderation logs`)
@@ -73,30 +95,59 @@ export function ModerationTable() {
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {
       case "ban":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/20 text-red-300 border-red-500/30"
       case "kick":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+        return "bg-orange-500/20 text-orange-300 border-orange-500/30"
       case "warn":
       case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
       case "timeout":
       case "mute":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-purple-500/20 text-purple-300 border-purple-500/30"
       case "unban":
-        return "bg-green-500/10 text-green-400 border-green-500/20"
+        return "bg-green-500/20 text-green-300 border-green-500/30"
+      case "unmute":
+        return "bg-blue-500/20 text-blue-300 border-blue-500/30"
+      case "delete":
+        return "bg-pink-500/20 text-pink-300 border-pink-500/30"
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-slate-500/20 text-slate-300 border-slate-500/30"
     }
   }
 
-  const filteredLogs = modLogs.filter(
-    (log) =>
+  const getActionIcon = (action: string) => {
+    switch (action.toLowerCase()) {
+      case "ban":
+        return <Ban className="w-3 h-3" />
+      case "kick":
+        return <UserX className="w-3 h-3" />
+      case "warn":
+      case "warning":
+        return <AlertTriangle className="w-3 h-3" />
+      case "timeout":
+      case "mute":
+        return <Clock className="w-3 h-3" />
+      case "unban":
+      case "unmute":
+        return <CheckCircle className="w-3 h-3" />
+      default:
+        return <Shield className="w-3 h-3" />
+    }
+  }
+
+  const filteredLogs = modLogs.filter((log) => {
+    const matchesSearch =
       (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.user_id.includes(searchTerm) ||
-      log.moderator_id.includes(searchTerm),
-  )
+      log.moderator_id.includes(searchTerm)
+
+    const matchesAction = actionFilter === "all" || log.action.toLowerCase() === actionFilter.toLowerCase()
+    const matchesGuild = guildFilter === "all" || log.guild_id === guildFilter
+
+    return matchesSearch && matchesAction && matchesGuild
+  })
 
   const parseDetails = (details: any) => {
     if (typeof details === "string") {
@@ -116,7 +167,6 @@ export function ModerationTable() {
       return "No details provided"
     }
 
-    // Handle common detail fields with nice formatting
     const formattedDetails = []
 
     if (parsed.reason || parsed.original_reason) {
@@ -132,16 +182,19 @@ export function ModerationTable() {
     }
 
     if (parsed.channel_id) {
-      formattedDetails.push(`Channel: ${parsed.channel_id}`)
+      formattedDetails.push(`Channel: #${parsed.channel_name || parsed.channel_id.slice(-4)}`)
     }
 
     if (parsed.message_id) {
-      formattedDetails.push(`Message: ${parsed.message_id}`)
+      formattedDetails.push(`Message: ${parsed.message_id.slice(-8)}`)
     }
 
-    // Add any other fields that weren't handled above
     Object.entries(parsed).forEach(([key, value]) => {
-      if (!["reason", "original_reason", "duration", "expires_at", "channel_id", "message_id"].includes(key)) {
+      if (
+        !["reason", "original_reason", "duration", "expires_at", "channel_id", "message_id", "channel_name"].includes(
+          key,
+        )
+      ) {
         formattedDetails.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${String(value)}`)
       }
     })
@@ -193,15 +246,46 @@ export function ModerationTable() {
               className="pl-10 bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
             />
           </div>
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-40 bg-white/5 border-emerald-400/20 text-white">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Action" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-emerald-400/20">
+              <SelectItem value="all">All Actions</SelectItem>
+              <SelectItem value="ban">Ban</SelectItem>
+              <SelectItem value="kick">Kick</SelectItem>
+              <SelectItem value="warn">Warn</SelectItem>
+              <SelectItem value="timeout">Timeout</SelectItem>
+              <SelectItem value="mute">Mute</SelectItem>
+              <SelectItem value="unban">Unban</SelectItem>
+              <SelectItem value="unmute">Unmute</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={guildFilter} onValueChange={setGuildFilter}>
+            <SelectTrigger className="w-40 bg-white/5 border-emerald-400/20 text-white">
+              <SelectValue placeholder="Guild" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-emerald-400/20">
+              <SelectItem value="all">All Guilds</SelectItem>
+              {guilds.map((guild) => (
+                <SelectItem key={guild.id} value={guild.id}>
+                  {guild.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
         {filteredLogs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No logs found matching your search." : "No moderation logs found."}
+              {searchTerm || actionFilter !== "all" || guildFilter !== "all"
+                ? "No logs found matching your filters."
+                : "No moderation logs found."}
             </p>
-            {!searchTerm && (
+            {!searchTerm && actionFilter === "all" && guildFilter === "all" && (
               <p className="text-sm text-emerald-300/40">Moderation logs will appear here when actions are taken.</p>
             )}
           </div>
@@ -229,7 +313,8 @@ export function ModerationTable() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getActionColor(log.action)}>
-                      {log.action}
+                      {getActionIcon(log.action)}
+                      <span className="ml-1">{log.action}</span>
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -241,9 +326,12 @@ export function ModerationTable() {
                   <TableCell className="text-emerald-200/80 max-w-md">
                     <div className="text-sm break-words">{formatDetails(log.details)}</div>
                   </TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{log.guild_id}</TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {guilds.find((g) => g.id === log.guild_id)?.name || `Guild ${log.guild_id.slice(-4)}`}
+                  </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                    <div className="text-sm">{formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}</div>
+                    <div className="text-xs text-emerald-300/60">{new Date(log.created_at).toLocaleDateString()}</div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

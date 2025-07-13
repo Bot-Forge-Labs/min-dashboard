@@ -7,60 +7,52 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { Shield, AlertTriangle, Ban, UserX, Clock, Plus, Search } from "lucide-react"
-
-interface ModerationAction {
-  id: number
-  guild_id: string
-  user_id: string
-  user_username?: string
-  moderator_id: string
-  moderator_username?: string
-  action: string
-  reason: string
-  duration?: string
-  expires_at?: string
-  created_at: string
-}
-
-interface Guild {
-  guild_id: string
-  name: string
-}
+import { Ban, UserX, AlertTriangle, Clock, Shield, Search, Loader2, Eye, History } from "lucide-react"
 
 interface User {
   id: string
   username: string
+  discriminator: string
+  avatar_url?: string
+  roles: string[]
+  message_count: number
+  joined_at: string
+  last_active: string
+}
+
+interface PunishmentForm {
+  userId: string
+  action: "warn" | "mute" | "timeout" | "kick" | "ban"
+  reason: string
+  duration?: string
+  deleteMessages?: boolean
 }
 
 export function ModerationPanel() {
-  const [actions, setActions] = useState<ModerationAction[]>([])
-  const [guilds, setGuilds] = useState<Guild[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedGuild, setSelectedGuild] = useState<string>("")
-  const [showPunishDialog, setShowPunishDialog] = useState(false)
-  const [punishing, setPunishing] = useState(false)
-
-  const [punishmentForm, setPunishmentForm] = useState({
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [punishmentForm, setPunishmentForm] = useState<PunishmentForm>({
     userId: "",
-    action: "",
+    action: "warn",
     reason: "",
     duration: "",
-    guildId: "",
+    deleteMessages: false,
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   useEffect(() => {
-    fetchData()
+    fetchUsers()
   }, [])
 
-  const fetchData = async () => {
+  const fetchUsers = async () => {
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -68,53 +60,34 @@ export function ModerationPanel() {
         return
       }
 
-      // Fetch moderation actions
-      const { data: actionsData, error: actionsError } = await supabase
-        .from("mod_logs")
+      const { data, error } = await supabase
+        .from("users")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100)
+        .order("last_active", { ascending: false })
+        .limit(50)
 
-      if (actionsError) {
-        console.error("Error fetching moderation actions:", actionsError)
-      } else {
-        setActions(actionsData || [])
+      if (error) {
+        console.error("Error fetching users:", error)
+        toast.error("Failed to fetch users")
+        return
       }
 
-      // Fetch guilds
-      const { data: guildsData, error: guildsError } = await supabase
-        .from("guild_settings")
-        .select("guild_id, guild_name")
-
-      if (guildsError) {
-        console.error("Error fetching guilds:", guildsError)
-      } else {
-        setGuilds(guildsData || [])
-      }
-
-      // Fetch users
-      const { data: usersData, error: usersError } = await supabase.from("users").select("id, username").limit(100)
-
-      if (usersError) {
-        console.error("Error fetching users:", usersError)
-      } else {
-        setUsers(usersData || [])
-      }
+      setUsers(data || [])
     } catch (error) {
-      console.error("Error fetching data:", error)
-      toast.error("Failed to load moderation data")
+      console.error("Error fetching users:", error)
+      toast.error("Failed to connect to database")
     } finally {
       setLoading(false)
     }
   }
 
-  const handlePunishment = async () => {
-    if (!punishmentForm.userId || !punishmentForm.action || !punishmentForm.reason || !punishmentForm.guildId) {
-      toast.error("Please fill in all required fields")
+  const handlePunishUser = async () => {
+    if (!selectedUser || !punishmentForm.reason.trim()) {
+      toast.error("Please select a user and provide a reason")
       return
     }
 
-    setPunishing(true)
+    setSubmitting(true)
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -122,336 +95,402 @@ export function ModerationPanel() {
         return
       }
 
-      // Calculate expiration time if duration is provided
-      let expiresAt = null
-      if (punishmentForm.duration && (punishmentForm.action === "mute" || punishmentForm.action === "timeout")) {
-        const durationMinutes = Number.parseInt(punishmentForm.duration)
-        if (!isNaN(durationMinutes)) {
-          expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
-        }
-      }
-
-      // Insert moderation log
-      const { error: logError } = await supabase.from("mod_logs").insert({
-        guild_id: punishmentForm.guildId,
-        user_id: punishmentForm.userId,
-        moderator_id: "dashboard_user", // You might want to get this from auth
-        action: punishmentForm.action,
-        details: {
-          reason: punishmentForm.reason,
-          duration: punishmentForm.duration,
-          expires_at: expiresAt,
-        },
-      })
-
-      if (logError) {
-        console.error("Error creating moderation log:", logError)
-        toast.error("Failed to create moderation log")
+      // Get current user (moderator)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error("Not authenticated")
         return
       }
 
-      // Insert punishment record if applicable
-      if (["ban", "mute", "timeout"].includes(punishmentForm.action)) {
-        const { error: punishmentError } = await supabase.from("punishments").insert({
-          user_id: punishmentForm.userId,
-          moderator_id: "dashboard_user",
-          command_name: punishmentForm.action,
-          reason: punishmentForm.reason,
-          expires_at: expiresAt,
-          active: true,
-        })
-
-        if (punishmentError) {
-          console.error("Error creating punishment record:", punishmentError)
-          // Don't return here, as the log was created successfully
-        }
+      // Create punishment record
+      const punishmentData = {
+        user_id: selectedUser.id,
+        moderator_id: user.id,
+        action: punishmentForm.action,
+        reason: punishmentForm.reason,
+        duration: punishmentForm.duration || null,
+        expires_at: punishmentForm.duration
+          ? new Date(Date.now() + parseDuration(punishmentForm.duration)).toISOString()
+          : null,
+        active: ["mute", "timeout", "ban"].includes(punishmentForm.action),
+        guild_id: "default_guild", // You'd get this from context
       }
 
-      toast.success(`${punishmentForm.action} applied successfully`)
-      setShowPunishDialog(false)
+      const { error: punishmentError } = await supabase.from("punishments").insert(punishmentData)
+
+      if (punishmentError) {
+        console.error("Error creating punishment:", punishmentError)
+        toast.error("Failed to create punishment record")
+        return
+      }
+
+      // Create moderation log
+      const logData = {
+        user_id: selectedUser.id,
+        moderator_id: user.id,
+        action: punishmentForm.action,
+        guild_id: "default_guild",
+        details: {
+          reason: punishmentForm.reason,
+          duration: punishmentForm.duration,
+          deleteMessages: punishmentForm.deleteMessages,
+          expires_at: punishmentData.expires_at,
+        },
+      }
+
+      const { error: logError } = await supabase.from("mod_logs").insert(logData)
+
+      if (logError) {
+        console.error("Error creating mod log:", logError)
+      }
+
+      // Execute punishment via Discord API
+      try {
+        const response = await fetch("/api/discord/punish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: selectedUser.id,
+            action: punishmentForm.action,
+            reason: punishmentForm.reason,
+            duration: punishmentForm.duration,
+            deleteMessages: punishmentForm.deleteMessages,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.text()
+          throw new Error(error)
+        }
+
+        toast.success(`Successfully ${punishmentForm.action}ned ${selectedUser.username}`)
+      } catch (discordError) {
+        console.error("Discord API error:", discordError)
+        toast.warning("Punishment logged but Discord action may have failed")
+      }
+
+      // Reset form and close dialog
       setPunishmentForm({
         userId: "",
-        action: "",
+        action: "warn",
         reason: "",
         duration: "",
-        guildId: "",
+        deleteMessages: false,
       })
-      fetchData()
+      setSelectedUser(null)
+      setDialogOpen(false)
     } catch (error) {
-      console.error("Error applying punishment:", error)
-      toast.error("Failed to apply punishment")
+      console.error("Error punishing user:", error)
+      toast.error("Failed to punish user")
     } finally {
-      setPunishing(false)
+      setSubmitting(false)
     }
   }
 
+  const parseDuration = (duration: string): number => {
+    const match = duration.match(/^(\d+)([smhd])$/)
+    if (!match) return 0
+
+    const value = Number.parseInt(match[1])
+    const unit = match[2]
+
+    switch (unit) {
+      case "s":
+        return value * 1000
+      case "m":
+        return value * 60 * 1000
+      case "h":
+        return value * 60 * 60 * 1000
+      case "d":
+        return value * 24 * 60 * 60 * 1000
+      default:
+        return 0
+    }
+  }
+
+  const openPunishmentDialog = (user: User, action: PunishmentForm["action"]) => {
+    setSelectedUser(user)
+    setPunishmentForm((prev) => ({
+      ...prev,
+      userId: user.id,
+      action,
+      reason: "",
+      duration: "",
+      deleteMessages: false,
+    }))
+    setDialogOpen(true)
+  }
+
+  const filteredUsers = users.filter(
+    (user) => user.username.toLowerCase().includes(searchTerm.toLowerCase()) || user.id.includes(searchTerm),
+  )
+
   const getActionIcon = (action: string) => {
-    switch (action.toLowerCase()) {
-      case "ban":
-        return <Ban className="w-4 h-4" />
-      case "kick":
-        return <UserX className="w-4 h-4" />
+    switch (action) {
       case "warn":
-      case "warning":
         return <AlertTriangle className="w-4 h-4" />
       case "mute":
       case "timeout":
         return <Clock className="w-4 h-4" />
+      case "kick":
+        return <UserX className="w-4 h-4" />
+      case "ban":
+        return <Ban className="w-4 h-4" />
       default:
         return <Shield className="w-4 h-4" />
     }
   }
 
   const getActionColor = (action: string) => {
-    switch (action.toLowerCase()) {
-      case "ban":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
-      case "kick":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+    switch (action) {
       case "warn":
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-yellow-600 hover:bg-yellow-500"
       case "mute":
       case "timeout":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-purple-600 hover:bg-purple-500"
+      case "kick":
+        return "bg-orange-600 hover:bg-orange-500"
+      case "ban":
+        return "bg-red-600 hover:bg-red-500"
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-gray-600 hover:bg-gray-500"
     }
   }
 
-  const filteredActions = actions.filter(
-    (action) =>
-      action.user_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      action.moderator_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      action.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      action.reason?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  if (loading) {
+    return (
+      <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto mb-4" />
+            <p className="text-emerald-200/80">Loading users...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-white">Moderation Panel</CardTitle>
-              <CardDescription className="text-emerald-200/80">
-                Manage user punishments and view moderation history
-              </CardDescription>
-            </div>
-            <Dialog open={showPunishDialog} onOpenChange={setShowPunishDialog}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Punish User
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Apply Punishment</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="guild-select" className="text-emerald-200">
-                      Guild
-                    </Label>
-                    <Select
-                      value={punishmentForm.guildId}
-                      onValueChange={(value) => setPunishmentForm({ ...punishmentForm, guildId: value })}
-                    >
-                      <SelectTrigger className="bg-white/5 border-emerald-400/20 text-white">
-                        <SelectValue placeholder="Select guild" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-emerald-400/20">
-                        {guilds.map((guild) => (
-                          <SelectItem key={guild.guild_id} value={guild.guild_id} className="text-white">
-                            {guild.name || guild.guild_id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="user-select" className="text-emerald-200">
-                      User
-                    </Label>
-                    <Select
-                      value={punishmentForm.userId}
-                      onValueChange={(value) => setPunishmentForm({ ...punishmentForm, userId: value })}
-                    >
-                      <SelectTrigger className="bg-white/5 border-emerald-400/20 text-white">
-                        <SelectValue placeholder="Select user" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-emerald-400/20">
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id} className="text-white">
-                            {user.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="action-select" className="text-emerald-200">
-                      Action
-                    </Label>
-                    <Select
-                      value={punishmentForm.action}
-                      onValueChange={(value) => setPunishmentForm({ ...punishmentForm, action: value })}
-                    >
-                      <SelectTrigger className="bg-white/5 border-emerald-400/20 text-white">
-                        <SelectValue placeholder="Select action" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-emerald-400/20">
-                        <SelectItem value="warn" className="text-white">
-                          Warning
-                        </SelectItem>
-                        <SelectItem value="mute" className="text-white">
-                          Mute
-                        </SelectItem>
-                        <SelectItem value="timeout" className="text-white">
-                          Timeout
-                        </SelectItem>
-                        <SelectItem value="kick" className="text-white">
-                          Kick
-                        </SelectItem>
-                        <SelectItem value="ban" className="text-white">
-                          Ban
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="reason" className="text-emerald-200">
-                      Reason
-                    </Label>
-                    <Textarea
-                      id="reason"
-                      value={punishmentForm.reason}
-                      onChange={(e) => setPunishmentForm({ ...punishmentForm, reason: e.target.value })}
-                      placeholder="Enter reason for punishment"
-                      className="bg-white/5 border-emerald-400/20 text-white"
+          <CardTitle className="text-white flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Moderation Panel
+          </CardTitle>
+          <CardDescription className="text-emerald-200/80">Manage users and apply moderation actions</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-400/60 w-4 h-4" />
+            <Input
+              placeholder="Search users by name or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
+            />
+          </div>
+
+          {/* Users List */}
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-emerald-400/20 hover:bg-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage
+                      src={
+                        user.avatar_url ||
+                        `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`
+                      }
+                      alt={user.username}
                     />
-                  </div>
-                  {(punishmentForm.action === "mute" || punishmentForm.action === "timeout") && (
-                    <div>
-                      <Label htmlFor="duration" className="text-emerald-200">
-                        Duration (minutes)
-                      </Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        value={punishmentForm.duration}
-                        onChange={(e) => setPunishmentForm({ ...punishmentForm, duration: e.target.value })}
-                        placeholder="Enter duration in minutes"
-                        className="bg-white/5 border-emerald-400/20 text-white"
-                      />
+                    <AvatarFallback className="bg-emerald-600 text-white">{user.username.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-white">
+                      {user.username}#{user.discriminator}
                     </div>
-                  )}
+                    <div className="text-sm text-emerald-300/60">
+                      {user.message_count} messages • Joined {new Date(user.joined_at).toLocaleDateString()}
+                    </div>
+                    <div className="flex gap-1 mt-1">
+                      {user.roles.slice(0, 3).map((role, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {role}
+                        </Badge>
+                      ))}
+                      {user.roles.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{user.roles.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Button
-                    onClick={handlePunishment}
-                    disabled={punishing}
-                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500"
+                    variant="ghost"
+                    size="sm"
+                    className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
                   >
-                    {punishing ? "Applying..." : "Apply Punishment"}
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
+                  >
+                    <History className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => openPunishmentDialog(user, "warn")}
+                    size="sm"
+                    className={getActionColor("warn")}
+                  >
+                    {getActionIcon("warn")}
+                    <span className="ml-1">Warn</span>
+                  </Button>
+                  <Button
+                    onClick={() => openPunishmentDialog(user, "timeout")}
+                    size="sm"
+                    className={getActionColor("timeout")}
+                  >
+                    {getActionIcon("timeout")}
+                    <span className="ml-1">Timeout</span>
+                  </Button>
+                  <Button
+                    onClick={() => openPunishmentDialog(user, "kick")}
+                    size="sm"
+                    className={getActionColor("kick")}
+                  >
+                    {getActionIcon("kick")}
+                    <span className="ml-1">Kick</span>
+                  </Button>
+                  <Button onClick={() => openPunishmentDialog(user, "ban")} size="sm" className={getActionColor("ban")}>
+                    {getActionIcon("ban")}
+                    <span className="ml-1">Ban</span>
                   </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            ))}
           </div>
-        </CardHeader>
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-8 text-emerald-200/60">
+              <p>No users found matching your search.</p>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
-      <Tabs defaultValue="logs" className="space-y-4">
-        <TabsList className="bg-white/5 border-emerald-400/20">
-          <TabsTrigger value="logs" className="data-[state=active]:bg-emerald-500/20">
-            Moderation Logs
-          </TabsTrigger>
-          <TabsTrigger value="active" className="data-[state=active]:bg-emerald-500/20">
-            Active Punishments
-          </TabsTrigger>
-        </TabsList>
+      {/* Punishment Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="bg-slate-900 border-emerald-400/20">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              {getActionIcon(punishmentForm.action)}
+              {punishmentForm.action.charAt(0).toUpperCase() + punishmentForm.action.slice(1)} User
+            </DialogTitle>
+            <DialogDescription className="text-emerald-200/80">
+              {selectedUser &&
+                `Apply ${punishmentForm.action} to ${selectedUser.username}#${selectedUser.discriminator}`}
+            </DialogDescription>
+          </DialogHeader>
 
-        <TabsContent value="logs">
-          <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-emerald-400/60 w-4 h-4" />
-                  <Input
-                    placeholder="Search moderation logs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
-                  />
-                </div>
-                <Select value={selectedGuild} onValueChange={setSelectedGuild}>
-                  <SelectTrigger className="w-48 bg-white/5 border-emerald-400/20 text-white">
-                    <SelectValue placeholder="Filter by guild" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-emerald-400/20">
-                    <SelectItem value="" className="text-white">
-                      All Guilds
-                    </SelectItem>
-                    {guilds.map((guild) => (
-                      <SelectItem key={guild.guild_id} value={guild.guild_id} className="text-white">
-                        {guild.name || guild.guild_id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {filteredActions.map((action) => (
-                  <div
-                    key={action.id}
-                    className="flex items-center justify-between p-4 border border-emerald-400/20 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline" className={getActionColor(action.action)}>
-                        {getActionIcon(action.action)}
-                        <span className="ml-1">{action.action}</span>
-                      </Badge>
-                      <div>
-                        <div className="text-white font-medium">{action.user_username || action.user_id}</div>
-                        <div className="text-emerald-200/70 text-sm">
-                          by {action.moderator_username || action.moderator_id}
-                        </div>
-                      </div>
-                      <div className="text-emerald-200/80 text-sm max-w-md">{action.reason}</div>
-                    </div>
-                    <div className="text-emerald-200/60 text-sm">{new Date(action.created_at).toLocaleString()}</div>
-                  </div>
-                ))}
-                {filteredActions.length === 0 && (
-                  <div className="text-center py-8 text-emerald-200/60">
-                    <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No moderation logs found</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-emerald-200">Action</Label>
+              <Select
+                value={punishmentForm.action}
+                onValueChange={(value: PunishmentForm["action"]) =>
+                  setPunishmentForm((prev) => ({ ...prev, action: value }))
+                }
+              >
+                <SelectTrigger className="bg-white/5 border-emerald-400/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-emerald-400/20">
+                  <SelectItem value="warn">Warn</SelectItem>
+                  <SelectItem value="mute">Mute</SelectItem>
+                  <SelectItem value="timeout">Timeout</SelectItem>
+                  <SelectItem value="kick">Kick</SelectItem>
+                  <SelectItem value="ban">Ban</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <TabsContent value="active">
-          <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
-            <CardHeader>
-              <CardTitle className="text-white">Active Punishments</CardTitle>
-              <CardDescription className="text-emerald-200/80">
-                View and manage currently active punishments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-emerald-200/60">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Active punishments will be displayed here</p>
+            <div>
+              <Label className="text-emerald-200">Reason *</Label>
+              <Textarea
+                placeholder="Enter reason for this action..."
+                value={punishmentForm.reason}
+                onChange={(e) => setPunishmentForm((prev) => ({ ...prev, reason: e.target.value }))}
+                className="bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
+                rows={3}
+              />
+            </div>
+
+            {["mute", "timeout", "ban"].includes(punishmentForm.action) && (
+              <div>
+                <Label className="text-emerald-200">Duration (optional)</Label>
+                <Input
+                  placeholder="e.g., 1h, 30m, 7d"
+                  value={punishmentForm.duration}
+                  onChange={(e) => setPunishmentForm((prev) => ({ ...prev, duration: e.target.value }))}
+                  className="bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
+                />
+                <p className="text-xs text-emerald-300/60 mt-1">
+                  Format: 1s, 5m, 2h, 7d (seconds, minutes, hours, days)
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            )}
+
+            {punishmentForm.action === "ban" && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="deleteMessages"
+                  checked={punishmentForm.deleteMessages}
+                  onChange={(e) => setPunishmentForm((prev) => ({ ...prev, deleteMessages: e.target.checked }))}
+                  className="rounded border-emerald-400/20"
+                />
+                <Label htmlFor="deleteMessages" className="text-emerald-200">
+                  Delete recent messages (7 days)
+                </Label>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handlePunishUser}
+                disabled={submitting || !punishmentForm.reason.trim()}
+                className={`${getActionColor(punishmentForm.action)} text-white`}
+              >
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : getActionIcon(punishmentForm.action)}
+                <span className="ml-2">
+                  {submitting
+                    ? "Processing..."
+                    : `${punishmentForm.action.charAt(0).toUpperCase() + punishmentForm.action.slice(1)} User`}
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
