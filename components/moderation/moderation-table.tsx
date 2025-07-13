@@ -1,29 +1,42 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Eye, Loader2, RefreshCw } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { createClient } from "@/lib/supabase/client"
-import type { ModLog } from "@/lib/types/database"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Eye, Loader2, RefreshCw } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
+import type { ModLog } from "@/types/database";
+import { toast } from "sonner";
 
 export function ModerationTable() {
-  const [modLogs, setModLogs] = useState<ModLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
+  const [modLogs, setModLogs] = useState<ModLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchModLogs = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       // Try the view first, fallback to regular table if view doesn't exist
@@ -31,123 +44,148 @@ export function ModerationTable() {
         .from("mod_logs_with_usernames")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(100);
 
       // If view doesn't exist, try the regular table
       if (error && error.message.includes("does not exist")) {
-        const result = await supabase.from("mod_logs").select("*").order("created_at", { ascending: false }).limit(100)
+        const result = await supabase
+          .from("mod_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
 
-        data = result.data
-        error = result.error
+        data = result.data;
+        error = result.error;
       }
 
       if (error) {
-        console.error("Error fetching mod logs:", error)
-        toast.error("Failed to fetch moderation logs")
-        return
+        console.error("Error fetching mod logs:", error);
+        toast.error("Failed to fetch moderation logs");
+        return;
       }
 
-      setModLogs(data || [])
+      setModLogs(data || []);
 
       if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} moderation logs`)
+        toast.success(`Loaded ${data.length} moderation logs`);
       }
     } catch (error) {
-      console.error("Error fetching mod logs:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching mod logs:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchModLogs()
-  }, [])
+    fetchModLogs();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchModLogs()
-  }
+    setRefreshing(true);
+    fetchModLogs();
+  };
 
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {
       case "ban":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       case "kick":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
       case "warn":
       case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
       case "timeout":
       case "mute":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
       case "unban":
-        return "bg-green-500/10 text-green-400 border-green-500/20"
+        return "bg-green-500/10 text-green-400 border-green-500/20";
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-slate-500/10 text-slate-400 border-slate-500/20";
     }
-  }
+  };
 
   const filteredLogs = modLogs.filter(
     (log) =>
-      (log.user_username && log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (log.moderator_username && log.moderator_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (log.user_username &&
+        log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (log.moderator_username &&
+        log.moderator_username
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.user_id.includes(searchTerm) ||
-      log.moderator_id.includes(searchTerm),
-  )
+      log.moderator_id.includes(searchTerm)
+  );
 
   const parseDetails = (details: any) => {
     if (typeof details === "string") {
       try {
-        return JSON.parse(details)
+        return JSON.parse(details);
       } catch {
-        return { reason: details }
+        return { reason: details };
       }
     }
-    return details || {}
-  }
+    return details || {};
+  };
 
   const formatDetails = (details: any) => {
-    const parsed = parseDetails(details)
+    const parsed = parseDetails(details);
 
     if (!parsed || Object.keys(parsed).length === 0) {
-      return "No details provided"
+      return "No details provided";
     }
 
     // Handle common detail fields with nice formatting
-    const formattedDetails = []
+    const formattedDetails = [];
 
     if (parsed.reason || parsed.original_reason) {
-      formattedDetails.push(`Reason: ${parsed.reason || parsed.original_reason}`)
+      formattedDetails.push(
+        `Reason: ${parsed.reason || parsed.original_reason}`
+      );
     }
 
     if (parsed.duration) {
-      formattedDetails.push(`Duration: ${parsed.duration}`)
+      formattedDetails.push(`Duration: ${parsed.duration}`);
     }
 
     if (parsed.expires_at) {
-      formattedDetails.push(`Expires: ${new Date(parsed.expires_at).toLocaleString()}`)
+      formattedDetails.push(
+        `Expires: ${new Date(parsed.expires_at).toLocaleString()}`
+      );
     }
 
     if (parsed.channel_id) {
-      formattedDetails.push(`Channel: ${parsed.channel_id}`)
+      formattedDetails.push(`Channel: ${parsed.channel_id}`);
     }
 
     if (parsed.message_id) {
-      formattedDetails.push(`Message: ${parsed.message_id}`)
+      formattedDetails.push(`Message: ${parsed.message_id}`);
     }
 
     // Add any other fields that weren't handled above
     Object.entries(parsed).forEach(([key, value]) => {
-      if (!["reason", "original_reason", "duration", "expires_at", "channel_id", "message_id"].includes(key)) {
-        formattedDetails.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${String(value)}`)
+      if (
+        ![
+          "reason",
+          "original_reason",
+          "duration",
+          "expires_at",
+          "channel_id",
+          "message_id",
+        ].includes(key)
+      ) {
+        formattedDetails.push(
+          `${key.charAt(0).toUpperCase() + key.slice(1)}: ${String(value)}`
+        );
       }
-    })
+    });
 
-    return formattedDetails.length > 0 ? formattedDetails.join(" • ") : "No details provided"
-  }
+    return formattedDetails.length > 0
+      ? formattedDetails.join(" • ")
+      : "No details provided";
+  };
 
   if (loading) {
     return (
@@ -159,7 +197,7 @@ export function ModerationTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -179,7 +217,9 @@ export function ModerationTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -199,10 +239,14 @@ export function ModerationTable() {
         {filteredLogs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No logs found matching your search." : "No moderation logs found."}
+              {searchTerm
+                ? "No logs found matching your search."
+                : "No moderation logs found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Moderation logs will appear here when actions are taken.</p>
+              <p className="text-sm text-emerald-300/40">
+                Moderation logs will appear here when actions are taken.
+              </p>
             )}
           </div>
         ) : (
@@ -215,35 +259,57 @@ export function ModerationTable() {
                 <TableHead className="text-emerald-200">Details</TableHead>
                 <TableHead className="text-emerald-200">Guild</TableHead>
                 <TableHead className="text-emerald-200">Time</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLogs.map((log) => (
-                <TableRow key={log.id} className="border-emerald-400/20 hover:bg-white/5">
+                <TableRow
+                  key={log.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
                   <TableCell>
                     <div>
-                      <div className="font-medium text-white">{log.user_username || "Unknown User"}</div>
-                      <div className="text-xs text-emerald-300/60 font-mono">{log.user_id}</div>
+                      <div className="font-medium text-white">
+                        {log.user_username || "Unknown User"}
+                      </div>
+                      <div className="text-xs text-emerald-300/60 font-mono">
+                        {log.user_id}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getActionColor(log.action)}>
+                    <Badge
+                      variant="outline"
+                      className={getActionColor(log.action)}
+                    >
                       {log.action}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="text-emerald-200">{log.moderator_username || "Unknown Moderator"}</div>
-                      <div className="text-xs text-emerald-300/60 font-mono">{log.moderator_id}</div>
+                      <div className="text-emerald-200">
+                        {log.moderator_username || "Unknown Moderator"}
+                      </div>
+                      <div className="text-xs text-emerald-300/60 font-mono">
+                        {log.moderator_id}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-emerald-200/80 max-w-md">
-                    <div className="text-sm break-words">{formatDetails(log.details)}</div>
+                    <div className="text-sm break-words">
+                      {formatDetails(log.details)}
+                    </div>
                   </TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{log.guild_id}</TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {log.guild_id}
+                  </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(log.created_at), {
+                      addSuffix: true,
+                    })}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -261,5 +327,5 @@ export function ModerationTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

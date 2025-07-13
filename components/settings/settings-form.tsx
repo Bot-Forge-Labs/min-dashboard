@@ -120,7 +120,7 @@ export function SettingsForm() {
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+              className="bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
             >
               {saving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Settings
