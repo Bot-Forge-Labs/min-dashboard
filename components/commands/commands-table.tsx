@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Search,
@@ -16,6 +17,7 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
+  Settings,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/lib/supabase/client"
@@ -25,22 +27,43 @@ import { toast } from "sonner"
 // Define subcommands based on your bot code with descriptions
 const commandSubcommands: Record<string, Array<{ name: string; description: string }>> = {
   punish: [
-    { name: "warning", description: "Issue a warning to a user" },
-    { name: "ban", description: "Ban a user from the server" },
-    { name: "mute", description: "Temporarily mute a user" },
+    { name: "warning", description: "Issue a warning to a user for rule violations" },
+    { name: "ban", description: "Permanently ban a user from the server" },
+    { name: "kick", description: "Remove a user from the server temporarily" },
+    { name: "mute", description: "Temporarily mute a user in all channels" },
+    { name: "timeout", description: "Put a user in timeout for a specified duration" },
   ],
-  announcement: [{ name: "create", description: "Create a new announcement with embed" }],
+  announcement: [
+    { name: "create", description: "Create a new announcement with rich embed formatting" },
+    { name: "edit", description: "Edit an existing announcement" },
+    { name: "delete", description: "Delete an announcement" },
+    { name: "schedule", description: "Schedule an announcement for later" },
+  ],
   giveaway: [
-    { name: "create", description: "Start a new giveaway" },
+    { name: "create", description: "Start a new giveaway with customizable settings" },
     { name: "delete", description: "Delete an existing giveaway" },
-    { name: "view", description: "View giveaway details and participants" },
+    { name: "view", description: "View giveaway details and participant list" },
+    { name: "end", description: "Manually end a giveaway early" },
+    { name: "reroll", description: "Reroll winners for a completed giveaway" },
   ],
   reactionrole: [
     { name: "create", description: "Create a new reaction role message" },
-    { name: "delete", description: "Remove an existing reaction role" },
-    { name: "edit", description: "Modify reaction role settings" },
-    { name: "view", description: "View reaction role configuration" },
+    { name: "delete", description: "Remove an existing reaction role setup" },
+    { name: "edit", description: "Modify reaction role settings and mappings" },
+    { name: "view", description: "View current reaction role configuration" },
     { name: "list", description: "List all reaction roles in the server" },
+  ],
+  moderation: [
+    { name: "logs", description: "View moderation action logs" },
+    { name: "history", description: "View punishment history for a user" },
+    { name: "clear", description: "Clear moderation logs (admin only)" },
+    { name: "export", description: "Export moderation data" },
+  ],
+  settings: [
+    { name: "prefix", description: "Change the bot command prefix" },
+    { name: "automod", description: "Configure automatic moderation settings" },
+    { name: "logging", description: "Set up logging channels" },
+    { name: "permissions", description: "Configure role permissions" },
   ],
 }
 
@@ -104,6 +127,30 @@ export function CommandsTable() {
     setExpandedCommands(newExpanded)
   }
 
+  const toggleCommandStatus = async (commandName: string, currentStatus: boolean) => {
+    try {
+      const supabase = createClient()
+      if (!supabase) {
+        toast.error("Supabase client not available")
+        return
+      }
+
+      const { error } = await supabase.from("commands").update({ is_enabled: !currentStatus }).eq("name", commandName)
+
+      if (error) {
+        console.error("Error updating command status:", error)
+        toast.error("Failed to update command status")
+        return
+      }
+
+      toast.success(`Command ${!currentStatus ? "enabled" : "disabled"} successfully`)
+      fetchCommands()
+    } catch (error) {
+      console.error("Error updating command status:", error)
+      toast.error("Failed to update command status")
+    }
+  }
+
   const getCategoryColor = (category: string) => {
     switch (category.toLowerCase()) {
       case "moderation":
@@ -114,6 +161,8 @@ export function CommandsTable() {
         return "bg-purple-500/10 text-purple-400 border-purple-500/20"
       case "music":
         return "bg-pink-500/10 text-pink-400 border-pink-500/20"
+      case "admin":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
       default:
         return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     }
@@ -194,9 +243,9 @@ export function CommandsTable() {
                   open={isExpanded}
                   onOpenChange={() => toggleCommandExpansion(command.name)}
                 >
-                  <div className="border border-emerald-400/20 rounded-lg bg-white/5">
+                  <div className="border border-emerald-400/20 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                     <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between p-4 hover:bg-white/5 cursor-pointer">
+                      <div className="flex items-center justify-between p-4 cursor-pointer">
                         <div className="flex items-center gap-4 flex-1">
                           <div className="flex items-center gap-2">
                             {hasSubcommands ? (
@@ -219,16 +268,16 @@ export function CommandsTable() {
                             {command.category}
                           </Badge>
                           <div className="text-emerald-200/80">{command.usage_count.toLocaleString()} uses</div>
-                          <Badge
-                            variant="outline"
-                            className={
-                              command.is_enabled
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                : "bg-red-500/10 text-red-400 border-red-500/20"
-                            }
-                          >
-                            {command.is_enabled ? "Enabled" : "Disabled"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={command.is_enabled}
+                              onCheckedChange={() => toggleCommandStatus(command.name, command.is_enabled)}
+                              className="data-[state=checked]:bg-emerald-600"
+                            />
+                            <span className="text-xs text-emerald-200/60">
+                              {command.is_enabled ? "Enabled" : "Disabled"}
+                            </span>
+                          </div>
                           <div className="text-emerald-200/80">{command.cooldown}s cooldown</div>
                           <div className="text-emerald-200/80">
                             {command.last_used ? new Date(command.last_used).toLocaleDateString() : "Never"}
@@ -251,10 +300,11 @@ export function CommandsTable() {
                           >
                             <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                               <Edit className="w-4 h-4 mr-2" />
-                              Edit
+                              Edit Command
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
-                              {command.is_enabled ? "Disable" : "Enable"}
+                              <Settings className="w-4 h-4 mr-2" />
+                              Configure
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -274,13 +324,13 @@ export function CommandsTable() {
                               {commandSubcommands[command.name].map((subcommand) => (
                                 <div
                                   key={subcommand.name}
-                                  className="flex items-center justify-between p-3 rounded-md bg-white/5 border border-emerald-400/10"
+                                  className="flex items-center justify-between p-3 rounded-md bg-white/5 border border-emerald-400/10 hover:bg-white/10 transition-colors"
                                 >
-                                  <div>
+                                  <div className="flex-1">
                                     <div className="font-medium text-white">
                                       /{command.name} {subcommand.name}
                                     </div>
-                                    <div className="text-sm text-emerald-200/70">{subcommand.description}</div>
+                                    <div className="text-sm text-emerald-200/70 mt-1">{subcommand.description}</div>
                                   </div>
                                   <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
                                     Subcommand
