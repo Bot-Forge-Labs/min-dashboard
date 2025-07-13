@@ -1,88 +1,132 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, Bot, Server, Users } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Server, Users, Activity, Zap, Gift, Shield, Megaphone } from "lucide-react"
+import { getDashboardStats } from "@/lib/supabase/queries"
+import type { DashboardStats } from "@/lib/types/database"
 
-export async function StatsCards() {
-  let stats = {
-    total_servers: 0,
-    total_users: 0,
-    bot_uptime: 0,
-    commands_per_day: 0,
-  }
+export function StatsCards() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  try {
-    const supabase = await createClient()
-    if (supabase) {
-      // Get total servers
-      const { count: serverCount } = await supabase.from("guilds").select("*", { count: "exact", head: true })
-
-      // Get total users
-      const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true })
-
-      // Get total commands usage
-      const { data: commandsData } = await supabase.from("commands").select("usage_count")
-      const totalCommandUsage = commandsData?.reduce((sum, cmd) => sum + cmd.usage_count, 0) || 0
-
-      stats = {
-        total_servers: serverCount || 0,
-        total_users: userCount || 0,
-        bot_uptime: 99.9, // This would come from your bot's actual uptime
-        commands_per_day: Math.floor(totalCommandUsage / 30), // Rough estimate
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await getDashboardStats()
+        setStats(data)
+      } catch (error) {
+        console.error("Error fetching stats:", error)
+      } finally {
+        setLoading(false)
       }
     }
-  } catch (error) {
-    console.error("Error fetching stats:", error)
+
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Card key={i} className="bg-white/5 backdrop-blur-xl border border-emerald-400/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20 bg-emerald-400/20" />
+              <Skeleton className="h-4 w-4 bg-emerald-400/20" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16 bg-emerald-400/20 mb-2" />
+              <Skeleton className="h-3 w-24 bg-emerald-400/20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
   }
 
+  const statsData = [
+    {
+      title: "Connected Servers",
+      value: stats?.total_servers || 0,
+      description: stats?.total_servers === 1 ? "active server" : "active servers",
+      icon: Server,
+      color: "text-blue-400",
+      bgColor: "bg-blue-500/10",
+      borderColor: "border-blue-500/20",
+    },
+    {
+      title: "Total Users",
+      value: stats?.total_users || 0,
+      description: "registered users",
+      icon: Users,
+      color: "text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      borderColor: "border-emerald-500/20",
+    },
+    {
+      title: "Bot Uptime",
+      value: `${stats?.bot_uptime || 0}%`,
+      description: "system availability",
+      icon: Activity,
+      color: "text-green-400",
+      bgColor: "bg-green-500/10",
+      borderColor: "border-green-500/20",
+    },
+    {
+      title: "Commands/Day",
+      value: stats?.commands_per_day || 0,
+      description: "average usage",
+      icon: Zap,
+      color: "text-yellow-400",
+      bgColor: "bg-yellow-500/10",
+      borderColor: "border-yellow-500/20",
+    },
+    {
+      title: "Active Giveaways",
+      value: stats?.active_giveaways || 0,
+      description: "running events",
+      icon: Gift,
+      color: "text-purple-400",
+      bgColor: "bg-purple-500/10",
+      borderColor: "border-purple-500/20",
+    },
+    {
+      title: "Mod Actions",
+      value: stats?.mod_actions_week || 0,
+      description: "this week",
+      icon: Shield,
+      color: "text-red-400",
+      bgColor: "bg-red-500/10",
+      borderColor: "border-red-500/20",
+    },
+    {
+      title: "Announcements",
+      value: stats?.announcements_month || 0,
+      description: "this month",
+      icon: Megaphone,
+      color: "text-indigo-400",
+      bgColor: "bg-indigo-500/10",
+      borderColor: "border-indigo-500/20",
+    },
+  ]
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl hover:bg-white/10 transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-emerald-200">Total Servers</CardTitle>
-          <Server className="h-4 w-4 text-emerald-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-white">{stats.total_servers}</div>
-          <p className="text-xs text-emerald-300/60">
-            {stats.total_servers === 0 ? "No servers connected" : "Active servers"}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl hover:bg-white/10 transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-emerald-200">Total Users</CardTitle>
-          <Users className="h-4 w-4 text-green-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-white">{stats.total_users.toLocaleString()}</div>
-          <p className="text-xs text-emerald-300/60">
-            {stats.total_users === 0 ? "No users found" : "Registered users"}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl hover:bg-white/10 transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-emerald-200">Bot Uptime</CardTitle>
-          <Activity className="h-4 w-4 text-teal-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-white">{stats.bot_uptime === 0 ? "--" : `${stats.bot_uptime}%`}</div>
-          <p className="text-xs text-emerald-300/60">Last 30 days</p>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl hover:bg-white/10 transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-emerald-200">Commands/Day</CardTitle>
-          <Bot className="h-4 w-4 text-emerald-400" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-white">{stats.commands_per_day.toLocaleString()}</div>
-          <p className="text-xs text-emerald-300/60">Average daily usage</p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {statsData.map((stat, index) => (
+        <Card key={index} className={`bg-white/5 backdrop-blur-xl border ${stat.borderColor} shadow-xl`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-emerald-200/80">{stat.title}</CardTitle>
+            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stat.value}</div>
+            <p className="text-xs text-emerald-300/60">{stat.description}</p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }

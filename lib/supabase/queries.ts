@@ -245,8 +245,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const supabase = await createClient()
     if (!supabase) return defaultStats
 
-    // Get total servers
-    const { count: serverCount } = await supabase.from("guilds").select("*", { count: "exact", head: true })
+    // Get total servers - check both guilds and guild_settings tables
+    let serverCount = 0
+
+    // Try guilds table first
+    const { count: guildCount } = await supabase.from("guilds").select("*", { count: "exact", head: true })
+
+    if (guildCount && guildCount > 0) {
+      serverCount = guildCount
+    } else {
+      // Fallback to guild_settings table
+      const { count: guildSettingsCount } = await supabase
+        .from("guild_settings")
+        .select("*", { count: "exact", head: true })
+      serverCount = guildSettingsCount || 0
+    }
 
     // Get total users
     const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true })
@@ -280,7 +293,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .gte("created_at", monthAgo.toISOString())
 
     return {
-      total_servers: serverCount || 0,
+      total_servers: serverCount,
       total_users: userCount || 0,
       bot_uptime: 99.9, // This would come from your bot's actual uptime
       commands_per_day: Math.floor(totalCommandUsage / 30), // Rough estimate

@@ -16,18 +16,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Search, Plus, Edit, Trash2, Users, Shield, Loader2, RefreshCw } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Users, Shield, Loader2, RefreshCw, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import type { Role, UserRole, Guild } from "@/lib/types/database"
+import type { Role, UserRole } from "@/lib/types/database"
 import { toast } from "sonner"
+
+interface GuildSettings {
+  guild_id: string
+}
 
 export function RoleManagementPanel() {
   const [roles, setRoles] = useState<Role[]>([])
   const [userRoles, setUserRoles] = useState<UserRole[]>([])
-  const [guilds, setGuilds] = useState<Guild[]>([])
+  const [guildSettings, setGuildSettings] = useState<GuildSettings[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [refreshing, setRefreshing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [newRole, setNewRole] = useState({
     name: "",
@@ -44,41 +49,52 @@ export function RoleManagementPanel() {
         return
       }
 
-      const [rolesResult, userRolesResult, guildsResult] = await Promise.all([
-        supabase.from("roles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("*").order("assigned_at", { ascending: false }),
-        supabase.from("guilds").select("*").order("created_at", { ascending: false }),
-      ])
+      // Fetch guild settings to get available guilds
+      const { data: guildSettingsData, error: guildSettingsError } = await supabase
+        .from("guild_settings")
+        .select("guild_id")
+        .order("created_at", { ascending: false })
 
-      if (rolesResult.error) {
-        console.error("Error fetching roles:", rolesResult.error)
-        toast.error("Failed to fetch roles")
+      if (guildSettingsError) {
+        console.error("Error fetching guild settings:", guildSettingsError)
+        toast.error("Failed to fetch guild settings")
         return
       }
 
-      if (userRolesResult.error) {
-        console.error("Error fetching user roles:", userRolesResult.error)
-        toast.error("Failed to fetch user roles")
-        return
-      }
-
-      if (guildsResult.error) {
-        console.error("Error fetching guilds:", guildsResult.error)
-        toast.error("Failed to fetch guilds")
-        return
-      }
-
-      setRoles(rolesResult.data || [])
-      setUserRoles(userRolesResult.data || [])
-      setGuilds(guildsResult.data || [])
+      setGuildSettings(guildSettingsData || [])
 
       // Set default guild if available
-      if (guildsResult.data && guildsResult.data.length > 0 && !newRole.guild_id) {
-        setNewRole((prev) => ({ ...prev, guild_id: guildsResult.data[0].guild_id }))
+      if (guildSettingsData && guildSettingsData.length > 0 && !newRole.guild_id) {
+        setNewRole((prev) => ({ ...prev, guild_id: guildSettingsData[0].guild_id }))
       }
 
-      if (rolesResult.data && rolesResult.data.length > 0) {
-        toast.success(`Loaded ${rolesResult.data.length} roles`)
+      // Fetch roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("roles")
+        .select("*")
+        .order("position", { ascending: false })
+
+      if (rolesError) {
+        console.error("Error fetching roles:", rolesError)
+        toast.error("Failed to fetch roles")
+      } else {
+        setRoles(rolesData || [])
+        if (rolesData && rolesData.length > 0) {
+          toast.success(`Loaded ${rolesData.length} roles`)
+        }
+      }
+
+      // Fetch user roles
+      const { data: userRolesData, error: userRolesError } = await supabase
+        .from("user_roles")
+        .select("*")
+        .order("assigned_at", { ascending: false })
+
+      if (userRolesError) {
+        console.error("Error fetching user roles:", userRolesError)
+        toast.error("Failed to fetch user roles")
+      } else {
+        setUserRoles(userRolesData || [])
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -98,11 +114,50 @@ export function RoleManagementPanel() {
     fetchData()
   }
 
+  const handleSyncFromDiscord = async () => {
+    if (guildSettings.length === 0) {
+      toast.error("No guild found to sync from")
+      return
+    }
+
+    setSyncing(true)
+    try {
+      const guildId = guildSettings[0].guild_id
+
+      const response = await fetch("/api/sync-discord-roles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ guildId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to sync roles")
+      }
+
+      toast.success(result.message)
+      fetchData() // Refresh the data
+    } catch (error) {
+      console.error("Error syncing roles:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to sync roles from Discord")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const handleCreateRole = async () => {
     try {
       const supabase = createClient()
       if (!supabase) {
         toast.error("Supabase client not available")
+        return
+      }
+
+      if (!newRole.name.trim()) {
+        toast.error("Please enter a role name")
         return
       }
 
@@ -114,11 +169,15 @@ export function RoleManagementPanel() {
       const colorInt = Number.parseInt(newRole.color.replace("#", ""), 16)
 
       const { error } = await supabase.from("roles").insert({
-        role_id: `role_${Date.now()}`, // Generate a unique role ID
+        role_id: `role_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate a unique role ID
         guild_id: newRole.guild_id,
-        name: newRole.name,
+        name: newRole.name.trim(),
         color: colorInt,
         permissions: newRole.permissions,
+        position: 0,
+        hoist: false,
+        managed: false,
+        mentionable: true,
       })
 
       if (error) {
@@ -129,7 +188,12 @@ export function RoleManagementPanel() {
 
       toast.success("Role created successfully")
       setIsCreateDialogOpen(false)
-      setNewRole({ name: "", color: "#8be2b9", permissions: 0, guild_id: guilds[0]?.guild_id || "" })
+      setNewRole({
+        name: "",
+        color: "#8be2b9",
+        permissions: 0,
+        guild_id: guildSettings[0]?.guild_id || "",
+      })
       fetchData()
     } catch (error) {
       console.error("Error creating role:", error)
@@ -138,6 +202,10 @@ export function RoleManagementPanel() {
   }
 
   const handleDeleteRole = async (roleId: string) => {
+    if (!confirm("Are you sure you want to delete this role? This action cannot be undone.")) {
+      return
+    }
+
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -149,7 +217,7 @@ export function RoleManagementPanel() {
 
       if (error) {
         console.error("Error deleting role:", error)
-        toast.error("Failed to delete role")
+        toast.error(`Failed to delete role: ${error.message}`)
         return
       }
 
@@ -165,9 +233,20 @@ export function RoleManagementPanel() {
     return userRoles.filter((ur) => ur.role_id === roleId).length
   }
 
-  const getGuildName = (guildId: string) => {
-    const guild = guilds.find((g) => g.guild_id === guildId)
-    return guild ? guild.name : guildId
+  const getPermissionNames = (permissions: number) => {
+    const permissionFlags = [
+      { flag: 1 << 3, name: "Administrator" },
+      { flag: 1 << 5, name: "Manage Server" },
+      { flag: 1 << 4, name: "Manage Channels" },
+      { flag: 1 << 28, name: "Manage Roles" },
+      { flag: 1 << 1, name: "Kick Members" },
+      { flag: 1 << 2, name: "Ban Members" },
+      { flag: 1 << 10, name: "View Channels" },
+      { flag: 1 << 11, name: "Send Messages" },
+    ]
+
+    const activePermissions = permissionFlags.filter((perm) => (permissions & perm.flag) === perm.flag)
+    return activePermissions.length > 0 ? activePermissions.map((p) => p.name).join(", ") : "No special permissions"
   }
 
   const filteredRoles = roles.filter(
@@ -194,10 +273,20 @@ export function RoleManagementPanel() {
           <div>
             <CardTitle className="text-white">Role Management</CardTitle>
             <CardDescription className="text-emerald-200/80">
-              Create, edit, and manage server roles and permissions
+              Sync and manage Discord server roles and permissions
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncFromDiscord}
+              disabled={syncing || guildSettings.length === 0}
+              className="border-blue-400/20 text-blue-200 hover:bg-blue-500/10 bg-transparent"
+            >
+              <Download className={`w-4 h-4 mr-2 ${syncing ? "animate-bounce" : ""}`} />
+              {syncing ? "Syncing..." : "Sync from Discord"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -210,7 +299,10 @@ export function RoleManagementPanel() {
             </Button>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
+                <Button
+                  className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+                  disabled={guildSettings.length === 0}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Role
                 </Button>
@@ -234,9 +326,9 @@ export function RoleManagementPanel() {
                       className="w-full mt-1 p-2 bg-white/5 border border-emerald-400/20 rounded-md text-white"
                     >
                       <option value="">Select a guild</option>
-                      {guilds.map((guild) => (
+                      {guildSettings.map((guild) => (
                         <option key={guild.guild_id} value={guild.guild_id} className="bg-gray-800">
-                          {guild.name}
+                          Guild ID: {guild.guild_id}
                         </option>
                       ))}
                     </select>
@@ -285,6 +377,9 @@ export function RoleManagementPanel() {
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="0"
                     />
+                    <p className="text-xs text-emerald-300/60 mt-1">
+                      Common values: 0 (no permissions), 8 (admin), 2048 (read messages)
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
@@ -297,7 +392,7 @@ export function RoleManagementPanel() {
                   </Button>
                   <Button
                     onClick={handleCreateRole}
-                    disabled={!newRole.name || !newRole.guild_id}
+                    disabled={!newRole.name.trim() || !newRole.guild_id}
                     className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
                   >
                     Create Role
@@ -320,13 +415,30 @@ export function RoleManagementPanel() {
         </div>
       </CardHeader>
       <CardContent>
-        {filteredRoles.length === 0 ? (
+        {guildSettings.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-emerald-200/60 mb-2">No guilds found.</p>
+            <p className="text-sm text-emerald-300/40">
+              Make sure your bot is connected to a server and the guild settings are configured.
+            </p>
+          </div>
+        ) : filteredRoles.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
               {searchTerm ? "No roles found matching your search." : "No roles found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Create your first role to get started with role management.</p>
+              <div className="space-y-2">
+                <p className="text-sm text-emerald-300/40">Click "Sync from Discord" to import existing roles.</p>
+                <Button
+                  onClick={handleSyncFromDiscord}
+                  disabled={syncing}
+                  className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Sync from Discord
+                </Button>
+              </div>
             )}
           </div>
         ) : (
@@ -334,10 +446,10 @@ export function RoleManagementPanel() {
             <TableHeader>
               <TableRow className="border-emerald-400/20 hover:bg-white/5">
                 <TableHead className="text-emerald-200">Role</TableHead>
-                <TableHead className="text-emerald-200">Role ID</TableHead>
-                <TableHead className="text-emerald-200">Guild</TableHead>
+                <TableHead className="text-emerald-200">Position</TableHead>
                 <TableHead className="text-emerald-200">Color</TableHead>
                 <TableHead className="text-emerald-200">Permissions</TableHead>
+                <TableHead className="text-emerald-200">Properties</TableHead>
                 <TableHead className="text-emerald-200">Members</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
                 <TableHead className="text-emerald-200 text-right">Actions</TableHead>
@@ -351,22 +463,55 @@ export function RoleManagementPanel() {
                       <div
                         className="w-4 h-4 rounded-full border border-emerald-400/20"
                         style={{
-                          backgroundColor: role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#8be2b9",
+                          backgroundColor: role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#99aab5",
                         }}
                       />
                       <span className="font-medium text-white">{role.name}</span>
+                      {role.managed && (
+                        <Badge
+                          variant="outline"
+                          className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-xs"
+                        >
+                          Bot
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-emerald-200/80 text-sm">{role.role_id}</TableCell>
-                  <TableCell className="text-emerald-200/80 text-sm">{getGuildName(role.guild_id)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-gray-500/10 text-gray-400 border-gray-500/20">
+                      {role.position || 0}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-mono text-emerald-200/80 text-sm">
-                    {role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#8be2b9"}
+                    {role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#99aab5"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                      <Shield className="w-3 h-3 mr-1" />
-                      {role.permissions || 0}
-                    </Badge>
+                    <div className="max-w-xs">
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                        <Shield className="w-3 h-3 mr-1" />
+                        {role.permissions || 0}
+                      </Badge>
+                      <p className="text-xs text-emerald-300/60 mt-1 truncate">
+                        {getPermissionNames(role.permissions || 0)}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {role.hoist && (
+                        <Badge
+                          variant="outline"
+                          className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20 text-xs"
+                        >
+                          Hoisted
+                        </Badge>
+                      )}
+                      {role.mentionable && (
+                        <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20 text-xs">
+                          Mentionable
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
@@ -383,6 +528,7 @@ export function RoleManagementPanel() {
                         variant="ghost"
                         size="icon"
                         className="text-emerald-300 hover:text-white hover:bg-emerald-500/10"
+                        onClick={() => toast.info("Edit functionality coming soon!")}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -391,6 +537,7 @@ export function RoleManagementPanel() {
                         size="icon"
                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                         onClick={() => handleDeleteRole(role.role_id)}
+                        disabled={role.managed}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
