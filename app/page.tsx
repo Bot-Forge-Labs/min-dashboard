@@ -23,17 +23,7 @@ export default function LoginPage() {
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl"></div>
                 <div className="relative bg-gradient-to-br from-emerald-400 to-green-400 p-4 rounded-2xl shadow-2xl">
-                  {/* Fallback to Bot icon if image fails to load */}
-                  <div className="w-16 h-16 flex items-center justify-center">
-                    <svg
-                      className="w-12 h-12 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                    </svg>
-                  </div>
+                  <img src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png" alt="" />
                 </div>
               </div>
             </div>

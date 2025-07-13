@@ -78,7 +78,7 @@ export function AppSidebar() {
           <div className="relative">
             <div className="absolute inset-0 bg-emerald-400/20 rounded-lg blur-sm"></div>
             <div className="relative bg-gradient-to-br from-emerald-400 to-green-400 p-2 rounded-lg shadow-lg">
-              <Bot className="w-5 h-5 text-white" />
+              <img src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png" alt="" />
             </div>
           </div>
           <div>
