@@ -112,20 +112,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="border-t border-emerald-400/20 p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8 ring-2 ring-emerald-400/20">
-            <AvatarImage src="/placeholder.svg?height=32&width=32" />
-            <AvatarFallback className="bg-emerald-600 text-white">AD</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Admin User</p>
-            <p className="text-xs text-emerald-300/60 truncate">admin@example.com</p>
-          </div>
-        </div>
-      </SidebarFooter>
-
       <SidebarRail />
     </Sidebar>
   )
