@@ -9,24 +9,24 @@ export function Footer() {
           <div className="flex items-center gap-2 text-sm text-emerald-200/80">
             <span>Made with</span>
             <Heart className="w-4 h-4 text-red-400 fill-current" />
-            <span>by the Minbot Team</span>
+            <span>by Sogs & gg.</span>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="text-xs text-emerald-300/60">© 2024 Minbot Dashboard. All rights reserved.</div>
+            <div className="text-xs text-emerald-300/60">© 2025 Minbot Dashboard. All rights reserved.</div>
 
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 className="text-emerald-300/80 hover:text-white hover:bg-emerald-500/10 h-8 px-3"
                 asChild
               >
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/" target="_blank" rel="noopener noreferrer">
                   <Github className="w-4 h-4 mr-1" />
                   GitHub
                 </a>
-              </Button>
+              </Button> */}
 
               <Button
                 variant="ghost"
@@ -34,7 +34,7 @@ export function Footer() {
                 className="text-emerald-300/80 hover:text-white hover:bg-emerald-500/10 h-8 px-3"
                 asChild
               >
-                <a href="https://discord.gg/your-server" target="_blank" rel="noopener noreferrer">
+                <a href="https://discord.gg/vuK8RptWMs" target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="w-4 h-4 mr-1" />
                   Support
                 </a>
