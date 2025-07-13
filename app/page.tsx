@@ -23,7 +23,7 @@ export default function LoginPage() {
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl"></div>
                 <div className="relative bg-gradient-to-br from-emerald-400 to-green-400 p-4 rounded-2xl shadow-2xl">
-                  <img src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png" alt="" />
+                  <img src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png" className="w-10 h-10" alt="" />
                 </div>
               </div>
             </div>
