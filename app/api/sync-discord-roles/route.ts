@@ -21,11 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Guild ID is required" }, { status: 400 })
     }
 
+    // This grabs from Vercel environment variables
     const botToken = process.env.DISCORD_BOT_TOKEN
     if (!botToken) {
       console.error("Discord bot token not configured")
       return NextResponse.json(
-        { error: "Discord bot token not configured. Please add DISCORD_BOT_TOKEN to environment variables." },
+        {
+          error: "Discord bot token not configured. Please add DISCORD_BOT_TOKEN to your Vercel environment variables.",
+        },
         { status: 500 },
       )
     }
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
 
       if (discordResponse.status === 401) {
         return NextResponse.json(
-          { error: "Invalid Discord bot token. Please check your DISCORD_BOT_TOKEN environment variable." },
+          { error: "Invalid Discord bot token. Please check your DISCORD_BOT_TOKEN environment variable in Vercel." },
           { status: 401 },
         )
       } else if (discordResponse.status === 403) {
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
       .from("roles")
       .delete()
       .eq("guild_id", guildId)
-      .neq("role_id", "user_created")
+      .not("role_id", "like", "custom_%")
 
     if (deleteError) {
       console.error("Error deleting existing roles:", deleteError)
