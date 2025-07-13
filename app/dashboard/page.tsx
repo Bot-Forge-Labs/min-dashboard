@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SetupBanner } from "@/components/setup-banner"
+import { StatsCards } from "@/components/dashboard/stats-cards"
 
 // Import components that don't use client-side code during SSR
 function DashboardSkeleton() {
@@ -187,7 +188,7 @@ export default function DashboardPage() {
         </Badge>
       </div>
 
-      <SimpleStatsCards />
+      <StatsCards />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SimpleRecentActivity />
