@@ -26,17 +26,25 @@ export async function PUT(
     const { roles } = body
 
     if (Array.isArray(roles)) {
-      await supabase.from("user_roles").delete().eq("user_id", userId).eq("guild_id", guildId)
+      // Delete existing roles for this user in this guild
+      const { error: deleteError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("guild_id", guildId)
+
+      if (deleteError) {
+        console.error("Error deleting old roles:", deleteError)
+        return NextResponse.json({ error: "Failed to delete old roles" }, { status: 500 })
+      }
 
       if (roles.length > 0) {
-        const assignedBy = "system" // or fetch admin user ID or bot user ID if available
-
         const roleInserts: UserRoleInsert[] = roles.map((roleId) => ({
           user_id: userId,
           guild_id: guildId,
           role_id: String(roleId),
           assigned_at: new Date().toISOString(),
-          assigned_by: assignedBy,
+          assigned_by: "system",  // required field
         }))
 
         const { error: rolesError } = await supabase.from("user_roles").insert(roleInserts)
