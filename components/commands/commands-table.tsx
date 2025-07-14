@@ -46,13 +46,13 @@ import type { Command as CommandType } from "@/types/database";
 import { toast } from "sonner";
 
 interface CommandWithSubcommands extends CommandType {
-  subcommands?: Array
-    name: string
-    description: string
-    usage_count: number
-    is_enabled: boolean
-  }
-};
+  subcommands?: Array<{
+    name: string;
+    description: string;
+    usage_count: number;
+    is_enabled: boolean;
+  }>;
+}
 
 export function CommandsTable() {
   const [commands, setCommands] = useState<CommandWithSubcommands[]>([]);
@@ -89,28 +89,31 @@ export function CommandsTable() {
       }
 
       // Group commands with their subcommands
-      const commandsWithSubs = (data || []).reduce((acc: CommandWithSubcommands[], cmd) => {
-        if (cmd.parent_command) {
-          // This is a subcommand
-          const parent = acc.find((c) => c.name === cmd.parent_command)
-          if (parent) {
-            if (!parent.subcommands) parent.subcommands = []
-            parent.subcommands.push({
-              name: cmd.name,
-              description: cmd.description,
-              usage_count: cmd.usage_count,
-              is_enabled: cmd.is_enabled,
-            })
+      const commandsWithSubs = (data || []).reduce(
+        (acc: CommandWithSubcommands[], cmd) => {
+          if (cmd.parent_command) {
+            // This is a subcommand
+            const parent = acc.find((c) => c.name === cmd.parent_command);
+            if (parent) {
+              if (!parent.subcommands) parent.subcommands = [];
+              parent.subcommands.push({
+                name: cmd.name,
+                description: cmd.description,
+                usage_count: cmd.usage_count,
+                is_enabled: cmd.is_enabled,
+              });
+            }
+          } else {
+            // This is a main command
+            acc.push({
+              ...cmd,
+              subcommands: [],
+            });
           }
-        } else {
-          // This is a main command
-          acc.push({
-            ...cmd,
-            subcommands: [],
-          })
-        }
-        return acc
-      }, [])
+          return acc;
+        },
+        []
+      );
 
       setCommands(commandsWithSubs);
       if (commandsWithSubs.length > 0) {
@@ -138,7 +141,10 @@ export function CommandsTable() {
         return;
       }
 
-      const { error } = await supabase.from("commands").update({ is_enabled }).eq("name", commandName)
+      const { error } = await supabase
+        .from("commands")
+        .update({ is_enabled })
+        .eq("name", commandName);
 
       if (error) {
         console.error("Error updating command:", error);
@@ -146,16 +152,24 @@ export function CommandsTable() {
         return;
       }
 
-      setCommands((prev) => prev.map((cmd) => (cmd.name === commandName ? { ...cmd, is_enabled } : cmd)))
+      setCommands((prev) =>
+        prev.map((cmd) =>
+          cmd.name === commandName ? { ...cmd, is_enabled } : cmd
+        )
+      );
 
-      toast.success(`${commandName} ${is_enabled ? "is_enabled" : "disabled"}`)
+      toast.success(`${commandName} ${is_enabled ? "is_enabled" : "disabled"}`);
     } catch (error) {
       console.error("Error updating command:", error);
       toast.error("Failed to update command");
     }
   };
 
-  const toggleSubcommand = async (parentCommand: string, subcommandName: string, is_enabled: boolean) => {
+  const toggleSubcommand = async (
+    parentCommand: string,
+    subcommandName: string,
+    is_enabled: boolean
+  ) => {
     try {
       const supabase = createClient();
       if (!supabase) {
@@ -168,7 +182,7 @@ export function CommandsTable() {
         .from("commands")
         .update({ is_enabled })
         .eq("name", subcommandName)
-        .eq("parent_command", parentCommand)
+        .eq("parent_command", parentCommand);
 
       if (error) {
         console.error("Error updating subcommand:", error);
@@ -182,14 +196,18 @@ export function CommandsTable() {
           if (cmd.name === parentCommand && cmd.subcommands) {
             return {
               ...cmd,
-              subcommands: cmd.subcommands.map((sub) => (sub.name === subcommandName ? { ...sub, is_enabled } : sub)),
-            }
+              subcommands: cmd.subcommands.map((sub) =>
+                sub.name === subcommandName ? { ...sub, is_enabled } : sub
+              ),
+            };
           }
           return cmd;
         })
       );
 
-      toast.success(`${subcommandName} ${is_enabled ? "is_enabled" : "disabled"}`)
+      toast.success(
+        `${subcommandName} ${is_enabled ? "is_enabled" : "disabled"}`
+      );
     } catch (error) {
       console.error("Error updating subcommand:", error);
       toast.error("Failed to update subcommand");
@@ -261,7 +279,7 @@ export function CommandsTable() {
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "is_enabled" && command.is_enabled) ||
-      (statusFilter === "disabled" && !command.is_enabled)
+      (statusFilter === "disabled" && !command.is_enabled);
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -426,7 +444,9 @@ export function CommandsTable() {
                         </div>
                         <Switch
                           checked={command.is_enabled}
-                          onCheckedChange={(checked) => toggleCommand(command.name, checked)}
+                          onCheckedChange={(checked) =>
+                            toggleCommand(command.name, checked)
+                          }
                           className="data-[state=checked]:bg-emerald-600"
                           onClick={(e) => e.stopPropagation()}
                         />

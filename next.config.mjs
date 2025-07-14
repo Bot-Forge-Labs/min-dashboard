@@ -4,9 +4,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     domains: ['nqbdotjtceuyftutjvsl.supabase.co'],
     unoptimized: true,
