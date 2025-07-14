@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 
 interface DiscordRole {
   id: string
@@ -21,13 +21,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Guild ID is required" }, { status: 400 })
     }
 
-    // This grabs from Vercel environment variables, not local .env
+    // Check for required environment variables
     const botToken = process.env.DISCORD_BOT_TOKEN
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
     if (!botToken) {
       console.error("Discord bot token not configured")
       return NextResponse.json(
         {
           error: "Discord bot token not configured. Please add DISCORD_BOT_TOKEN to your Vercel environment variables.",
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Supabase configuration missing")
+      return NextResponse.json(
+        {
+          error:
+            "Supabase not configured. Please add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Vercel environment variables.",
         },
         { status: 500 },
       )
@@ -77,12 +91,13 @@ export async function POST(request: NextRequest) {
     const discordRoles: DiscordRole[] = await discordResponse.json()
     console.log(`Fetched ${discordRoles.length} roles from Discord`)
 
-    // Get Supabase client
-    const supabase = await createClient()
-    if (!supabase) {
-      console.error("Failed to create Supabase client")
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
-    }
+    // Create Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
 
     // Clear existing roles for this guild (except user-created ones)
     console.log(`Clearing existing roles for guild: ${guildId}`)
@@ -94,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     if (deleteError) {
       console.error("Error deleting existing roles:", deleteError)
-      return NextResponse.json({ error: "Failed to clean existing roles" }, { status: 500 })
+      return NextResponse.json({ error: `Failed to clean existing roles: ${deleteError.message}` }, { status: 500 })
     }
 
     // Transform Discord roles to our format
@@ -112,13 +127,20 @@ export async function POST(request: NextRequest) {
     }))
 
     console.log(`Inserting ${rolesToInsert.length} roles into database`)
+    console.log("Sample role data:", rolesToInsert[0])
 
     // Insert roles into database
-    const { error: insertError } = await supabase.from("roles").insert(rolesToInsert)
+    const { data: insertData, error: insertError } = await supabase.from("roles").insert(rolesToInsert)
 
     if (insertError) {
       console.error("Database insert error:", insertError)
-      return NextResponse.json({ error: "Failed to save roles to database" }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: `Failed to save roles to database: ${insertError.message}`,
+          details: insertError,
+        },
+        { status: 500 },
+      )
     }
 
     console.log(`Successfully synced ${discordRoles.length} roles`)
