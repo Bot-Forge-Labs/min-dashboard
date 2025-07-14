@@ -121,6 +121,8 @@ export function RoleManagementPanel() {
 
     setSyncing(true)
     try {
+      console.log("Syncing roles for guild:", selectedGuild)
+
       const response = await fetch("/api/sync-discord-roles", {
         method: "POST",
         headers: {
@@ -129,11 +131,16 @@ export function RoleManagementPanel() {
         body: JSON.stringify({ guildId: selectedGuild }),
       })
 
-      const result = await response.json()
+      console.log("Response status:", response.status)
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to sync roles")
+        const errorText = await response.text()
+        console.error("API Error:", errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
+
+      const result = await response.json()
+      console.log("Sync result:", result)
 
       toast.success(`Successfully synced ${result.count} roles from Discord`)
       await fetchRoles()
@@ -225,7 +232,7 @@ export function RoleManagementPanel() {
     if (!color || color === "0" || color === 0) return "#99AAB5"
 
     // Convert to string if it's a number
-    const colorStr = color.toString()
+    const colorStr = String(color)
 
     // If it already starts with #, return as is
     if (colorStr.startsWith("#")) return colorStr
