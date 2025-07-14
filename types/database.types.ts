@@ -252,6 +252,7 @@ export type Database = {
           permissions: string[] | null
           type: string | null
           usage_count: number | null
+          parent_command: string | null
         }
         Insert: {
           added_at?: string | null
@@ -264,6 +265,7 @@ export type Database = {
           permissions?: string[] | null
           type?: string | null
           usage_count?: number | null
+          parent_command?: string | null
         }
         Update: {
           added_at?: string | null
@@ -276,6 +278,7 @@ export type Database = {
           permissions?: string[] | null
           type?: string | null
           usage_count?: number | null
+          parent_command?: string | null
         }
         Relationships: []
       }

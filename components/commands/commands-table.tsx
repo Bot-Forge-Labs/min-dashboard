@@ -34,7 +34,7 @@ interface CommandWithSubcommands extends CommandType {
     name: string
     description: string
     usage_count: number
-    enabled: boolean
+    is_enabled: boolean
   }>
 }
 
@@ -59,7 +59,10 @@ export function CommandsTable() {
         return
       }
 
-      const { data, error } = await supabase.from("commands").select("*").order("usage_count", { ascending: false })
+      const { data, error } = await supabase
+        .from("commands")
+        .select("*")
+        .order("usage_count", { ascending: false })
 
       if (error) {
         console.error("Error fetching commands:", error)
@@ -77,8 +80,8 @@ export function CommandsTable() {
             parent.subcommands.push({
               name: cmd.name,
               description: cmd.description,
-              usage_count: cmd.usage_count,
-              enabled: cmd.enabled,
+              usage_count: cmd.usage_count ?? 0,
+              is_enabled: cmd.is_enabled ?? true,
             })
           }
         } else {
@@ -117,7 +120,8 @@ export function CommandsTable() {
         return
       }
 
-      const { error } = await supabase.from("commands").update({ enabled }).eq("name", commandName)
+      // Use is_enabled here
+      const { error } = await supabase.from("commands").update({ is_enabled: enabled }).eq("name", commandName)
 
       if (error) {
         console.error("Error updating command:", error)
@@ -125,8 +129,10 @@ export function CommandsTable() {
         return
       }
 
-      // Update local state
-      setCommands((prev) => prev.map((cmd) => (cmd.name === commandName ? { ...cmd, enabled } : cmd)))
+      // Update local state with is_enabled
+      setCommands((prev) =>
+        prev.map((cmd) => (cmd.name === commandName ? { ...cmd, is_enabled: enabled } : cmd)),
+      )
 
       toast.success(`${commandName} ${enabled ? "enabled" : "disabled"}`)
     } catch (error) {
@@ -143,9 +149,10 @@ export function CommandsTable() {
         return
       }
 
+      // Use is_enabled here
       const { error } = await supabase
         .from("commands")
-        .update({ enabled })
+        .update({ is_enabled: enabled })
         .eq("name", subcommandName)
         .eq("parent_command", parentCommand)
 
@@ -155,13 +162,15 @@ export function CommandsTable() {
         return
       }
 
-      // Update local state
+      // Update local state with is_enabled
       setCommands((prev) =>
         prev.map((cmd) => {
           if (cmd.name === parentCommand && cmd.subcommands) {
             return {
               ...cmd,
-              subcommands: cmd.subcommands.map((sub) => (sub.name === subcommandName ? { ...sub, enabled } : sub)),
+              subcommands: cmd.subcommands.map((sub) =>
+                sub.name === subcommandName ? { ...sub, is_enabled: enabled } : sub,
+              ),
             }
           }
           return cmd
@@ -238,8 +247,8 @@ export function CommandsTable() {
     const matchesCategory = categoryFilter === "all" || command.category === categoryFilter
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "enabled" && command.enabled) ||
-      (statusFilter === "disabled" && !command.enabled)
+      (statusFilter === "enabled" && command.is_enabled) ||
+      (statusFilter === "disabled" && !command.is_enabled)
 
     return matchesSearch && matchesCategory && matchesStatus
   })
@@ -301,7 +310,7 @@ export function CommandsTable() {
             <SelectContent className="bg-slate-900 border-emerald-400/20">
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((category) => (
-                <SelectItem key={category} value={category}>
+                <SelectItem key={category} value={category ?? ""}>
                   {category}
                 </SelectItem>
               ))}
@@ -327,117 +336,71 @@ export function CommandsTable() {
                 ? "No commands found matching your filters."
                 : "No commands found."}
             </p>
-            {!searchTerm && categoryFilter === "all" && statusFilter === "all" && (
-              <p className="text-sm text-emerald-300/40">Commands will appear here once they're registered.</p>
-            )}
+            <Button variant="outline" onClick={() => setSearchTerm("")}>
+              Clear Search
+            </Button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {filteredCommands.map((command) => (
-              <Collapsible
-                key={command.id}
-                open={expandedCommands.has(command.name)}
-                onOpenChange={() => toggleExpanded(command.name)}
-              >
-                <div className="border border-emerald-400/20 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between p-4 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          {command.subcommands && command.subcommands.length > 0 ? (
-                            expandedCommands.has(command.name) ? (
-                              <ChevronDown className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-emerald-400" />
-                            )
-                          ) : (
-                            <div className="w-4 h-4" />
-                          )}
-                          {getCategoryIcon(command.category)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">/{command.name}</span>
-                            <Badge variant="outline" className={getCategoryColor(command.category)}>
-                              {command.category}
-                            </Badge>
-                            {command.subcommands && command.subcommands.length > 0 && (
-                              <Badge
-                                variant="outline"
-                                className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              >
-                                {command.subcommands.length} subcommands
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-emerald-200/80 mt-1">{command.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-emerald-300">
-                            <BarChart3 className="w-4 h-4" />
-                            <span className="font-medium">{command.usage_count.toLocaleString()}</span>
-                          </div>
-                          <p className="text-xs text-emerald-300/60">uses</p>
-                        </div>
-                        <Switch
-                          checked={command.enabled}
-                          onCheckedChange={(checked) => toggleCommand(command.name, checked)}
-                          className="data-[state=checked]:bg-emerald-600"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
+              <Card key={command.name} className="bg-white/10 border border-emerald-400/20 shadow-md">
+                <CardHeader className="flex items-center justify-between p-4">
+                  <div className="flex items-center space-x-3">
+                    <Badge className={`flex items-center gap-1 ${getCategoryColor(command.category || "")}`}>
+                      {getCategoryIcon(command.category || "")}
+                      {command.category || "Uncategorized"}
+                    </Badge>
+                    <div>
+                      <h3 className="text-white font-semibold text-lg">{command.name}</h3>
+                      <p className="text-emerald-200/80 text-sm max-w-xl">{command.description}</p>
                     </div>
-                  </CollapsibleTrigger>
-
-                  {command.subcommands && command.subcommands.length > 0 && (
-                    <CollapsibleContent>
-                      <div className="border-t border-emerald-400/20 bg-white/5">
-                        <div className="p-4">
-                          <h4 className="text-sm font-medium text-emerald-200 mb-3 flex items-center gap-2">
-                            <Zap className="w-4 h-4" />
-                            Subcommands
-                          </h4>
-                          <div className="space-y-2">
-                            {command.subcommands.map((subcommand) => (
-                              <div
-                                key={subcommand.name}
-                                className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-emerald-400/10"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                                  <div>
-                                    <div className="font-medium text-white">
-                                      /{command.name} {subcommand.name}
-                                    </div>
-                                    <p className="text-sm text-emerald-200/70">{subcommand.description}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                  <div className="text-right">
-                                    <div className="text-sm text-emerald-300 font-medium">
-                                      {subcommand.usage_count.toLocaleString()}
-                                    </div>
-                                    <p className="text-xs text-emerald-300/60">uses</p>
-                                  </div>
-                                  <Switch
-                                    checked={subcommand.enabled}
-                                    onCheckedChange={(checked) =>
-                                      toggleSubcommand(command.name, subcommand.name, checked)
-                                    }
-                                    className="data-[state=checked]:bg-emerald-600"
-                                  />
-                                </div>
-                              </div>
-                            ))}
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Switch
+                      checked={command.is_enabled ?? false}
+                      onCheckedChange={(checked) => toggleCommand(command.name, checked)}
+                      className="border-emerald-400/40"
+                    />
+                    {command.subcommands && command.subcommands.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpanded(command.name)}
+                        aria-label={expandedCommands.has(command.name) ? "Collapse subcommands" : "Expand subcommands"}
+                        className="text-emerald-300 hover:text-emerald-400"
+                      >
+                        {expandedCommands.has(command.name) ? (
+                          <ChevronDown className="w-5 h-5" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                {expandedCommands.has(command.name) && command.subcommands && (
+                  <CollapsibleContent className="bg-white/5 border-t border-emerald-400/20 p-4">
+                    <div className="space-y-3">
+                      {command.subcommands.map((sub) => (
+                        <div
+                          key={sub.name}
+                          className="flex items-center justify-between p-2 rounded-md hover:bg-white/10"
+                        >
+                          <div>
+                            <h4 className="text-emerald-200 font-semibold">{sub.name}</h4>
+                            <p className="text-emerald-200/80 text-sm">{sub.description}</p>
                           </div>
+                          <Switch
+                            checked={sub.is_enabled}
+                            onCheckedChange={(checked) => toggleSubcommand(command.name, sub.name, checked)}
+                            className="border-emerald-400/40"
+                          />
                         </div>
-                      </div>
-                    </CollapsibleContent>
-                  )}
-                </div>
-              </Collapsible>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                )}
+              </Card>
             ))}
           </div>
         )}
