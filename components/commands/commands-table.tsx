@@ -34,7 +34,7 @@ interface CommandWithSubcommands extends CommandType {
     name: string
     description: string
     usage_count: number
-    enabled: boolean
+    is_enabled: boolean
   }>
 }
 
@@ -78,7 +78,7 @@ export function CommandsTable() {
               name: cmd.name,
               description: cmd.description,
               usage_count: cmd.usage_count,
-              enabled: cmd.enabled,
+              is_enabled: cmd.is_enabled,
             })
           }
         } else {
@@ -109,7 +109,7 @@ export function CommandsTable() {
     fetchCommands()
   }
 
-  const toggleCommand = async (commandName: string, enabled: boolean) => {
+  const toggleCommand = async (commandName: string, is_enabled: boolean) => {
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -117,7 +117,7 @@ export function CommandsTable() {
         return
       }
 
-      const { error } = await supabase.from("commands").update({ enabled }).eq("name", commandName)
+      const { error } = await supabase.from("commands").update({ is_enabled }).eq("name", commandName)
 
       if (error) {
         console.error("Error updating command:", error)
@@ -126,16 +126,16 @@ export function CommandsTable() {
       }
 
       // Update local state
-      setCommands((prev) => prev.map((cmd) => (cmd.name === commandName ? { ...cmd, enabled } : cmd)))
+      setCommands((prev) => prev.map((cmd) => (cmd.name === commandName ? { ...cmd, is_enabled } : cmd)))
 
-      toast.success(`${commandName} ${enabled ? "enabled" : "disabled"}`)
+      toast.success(`${commandName} ${is_enabled ? "is_enabled" : "disabled"}`)
     } catch (error) {
       console.error("Error updating command:", error)
       toast.error("Failed to update command")
     }
   }
 
-  const toggleSubcommand = async (parentCommand: string, subcommandName: string, enabled: boolean) => {
+  const toggleSubcommand = async (parentCommand: string, subcommandName: string, is_enabled: boolean) => {
     try {
       const supabase = createClient()
       if (!supabase) {
@@ -145,7 +145,7 @@ export function CommandsTable() {
 
       const { error } = await supabase
         .from("commands")
-        .update({ enabled })
+        .update({ is_enabled })
         .eq("name", subcommandName)
         .eq("parent_command", parentCommand)
 
@@ -161,14 +161,14 @@ export function CommandsTable() {
           if (cmd.name === parentCommand && cmd.subcommands) {
             return {
               ...cmd,
-              subcommands: cmd.subcommands.map((sub) => (sub.name === subcommandName ? { ...sub, enabled } : sub)),
+              subcommands: cmd.subcommands.map((sub) => (sub.name === subcommandName ? { ...sub, is_enabled } : sub)),
             }
           }
           return cmd
         }),
       )
 
-      toast.success(`${subcommandName} ${enabled ? "enabled" : "disabled"}`)
+      toast.success(`${subcommandName} ${is_enabled ? "is_enabled" : "disabled"}`)
     } catch (error) {
       console.error("Error updating subcommand:", error)
       toast.error("Failed to update subcommand")
@@ -238,8 +238,8 @@ export function CommandsTable() {
     const matchesCategory = categoryFilter === "all" || command.category === categoryFilter
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "enabled" && command.enabled) ||
-      (statusFilter === "disabled" && !command.enabled)
+      (statusFilter === "is_enabled" && command.is_enabled) ||
+      (statusFilter === "disabled" && !command.is_enabled)
 
     return matchesSearch && matchesCategory && matchesStatus
   })
@@ -313,7 +313,7 @@ export function CommandsTable() {
             </SelectTrigger>
             <SelectContent className="bg-slate-900 border-emerald-400/20">
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="enabled">Enabled</SelectItem>
+              <SelectItem value="is_enabled">is_enabled</SelectItem>
               <SelectItem value="disabled">Disabled</SelectItem>
             </SelectContent>
           </Select>
@@ -335,7 +335,7 @@ export function CommandsTable() {
           <div className="space-y-2">
             {filteredCommands.map((command) => (
               <Collapsible
-                key={command.id}
+                key={command.name}
                 open={expandedCommands.has(command.name)}
                 onOpenChange={() => toggleExpanded(command.name)}
               >
@@ -382,7 +382,7 @@ export function CommandsTable() {
                           <p className="text-xs text-emerald-300/60">uses</p>
                         </div>
                         <Switch
-                          checked={command.enabled}
+                          checked={command.is_enabled}
                           onCheckedChange={(checked) => toggleCommand(command.name, checked)}
                           className="data-[state=checked]:bg-emerald-600"
                           onClick={(e) => e.stopPropagation()}
@@ -422,7 +422,7 @@ export function CommandsTable() {
                                     <p className="text-xs text-emerald-300/60">uses</p>
                                   </div>
                                   <Switch
-                                    checked={subcommand.enabled}
+                                    checked={subcommand.is_enabled}
                                     onCheckedChange={(checked) =>
                                       toggleSubcommand(command.name, subcommand.name, checked)
                                     }
