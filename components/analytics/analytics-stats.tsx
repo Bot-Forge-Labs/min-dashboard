@@ -42,7 +42,7 @@ export function AnalyticsStats() {
 
         // Get command usage
         const { data: commands } = await supabase.from("commands").select("usage_count")
-        const totalCommands = commands?.reduce((sum, cmd) => sum + cmd.usage_count, 0) || 0
+        const totalCommands = commands?.reduce((sum, cmd) => sum + (cmd.usage_count ?? 0), 0) || 0;
 
         // Get mod actions
         const { count: totalModActions } = await supabase.from("mod_logs").select("*", { count: "exact", head: true })
