@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
 interface DiscordRole {
   id: string;
@@ -24,8 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // This grabs from Vercel environment variables
-    const botToken = process.env.DISCORD_BOT_TOKEN;
+    // Check for required environment variables
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
     if (!botToken) {
       console.error("Discord bot token not configured");
       return NextResponse.json(
@@ -37,7 +40,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Fetching roles for guild: ${guildId}`);
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Supabase configuration missing")
+      return NextResponse.json(
+        {
+          error:
+            "Supabase not configured. Please add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Vercel environment variables.",
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log(`Fetching roles for guild: ${guildId}`)
 
     // Fetch roles from Discord API
     const discordResponse = await fetch(
@@ -92,68 +106,91 @@ export async function POST(request: NextRequest) {
     const discordRoles: DiscordRole[] = await discordResponse.json();
     console.log(`Fetched ${discordRoles.length} roles from Discord`);
 
-    // Get Supabase client
-    const supabase = await createClient();
-    if (!supabase) {
-      console.error("Failed to create Supabase client");
-      return NextResponse.json(
-        { error: "Database connection failed" },
-        { status: 500 }
-      );
+    if (discordRoles.length === 0) {
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        message: "No roles found in Discord server",
+      })
     }
 
-    // Clear existing roles for this guild (except user-created ones)
-    console.log(`Clearing existing roles for guild: ${guildId}`);
-    const { error: deleteError } = await supabase
-      .from("roles")
-      .delete()
-      .eq("guild_id", guildId)
-      .not("role_id", "like", "custom_%");
+    // Create Supabase client with service role key (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+
+    // Clear existing roles for this guild
+    console.log(`Clearing existing roles for guild: ${guildId}`)
+    const { error: deleteError } = await supabase.from("roles").delete().eq("guild_id", guildId)
 
     if (deleteError) {
-      console.error("Error deleting existing roles:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to clean existing roles" },
-        { status: 500 }
-      );
+      console.error("Error deleting existing roles:", deleteError)
+      // Continue anyway - might be first sync
     }
 
     // Transform Discord roles to our format
-    const rolesToInsert = discordRoles.map((role) => ({
-      role_id: role.id,
-      guild_id: guildId,
-      name: role.name,
-      color: Number(role.color.toString(16).padStart(6, "0")), // Convert to hex string
-      position: role.position,
-      permissions: Number(role.permissions),
-      hoist: role.hoist,
-      mentionable: role.mentionable,
-      managed: role.managed,
-      created_at: new Date().toISOString(),
-    }));
+    const rolesToInsert = discordRoles.map((role) => {
+      // Ensure color is within valid range
+      let colorValue = role.color || 0
+      if (colorValue < 0) colorValue = 0
+      if (colorValue > 16777215) colorValue = 16777215
 
-    console.log(`Inserting ${rolesToInsert.length} roles into database`);
+      return {
+        role_id: role.id,
+        guild_id: guildId,
+        name: role.name || "Unknown Role",
+        color: colorValue,
+        position: role.position || 0,
+        permissions: role.permissions || "0",
+        hoist: role.hoist || false,
+        mentionable: role.mentionable || false,
+        managed: role.managed || false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    })
 
-    // Insert roles into database
-    const { error: insertError } = await supabase
-      .from("roles")
-      .insert(rolesToInsert);
+    console.log(`Inserting ${rolesToInsert.length} roles into database`)
+    console.log("Sample role data:", {
+      ...rolesToInsert[0],
+      permissions: rolesToInsert[0]?.permissions?.substring(0, 20) + "...", // Truncate for logging
+    })
 
-    if (insertError) {
-      console.error("Database insert error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save roles to database" },
-        { status: 500 }
-      );
+    // Insert roles in batches to avoid timeout
+    const batchSize = 50
+    let insertedCount = 0
+
+    for (let i = 0; i < rolesToInsert.length; i += batchSize) {
+      const batch = rolesToInsert.slice(i, i + batchSize)
+
+      const { data: insertData, error: insertError } = await supabase.from("roles").insert(batch).select("role_id")
+
+      if (insertError) {
+        console.error(`Database insert error for batch ${i / batchSize + 1}:`, insertError)
+        return NextResponse.json(
+          {
+            error: `Failed to save roles to database: ${insertError.message}`,
+            details: insertError,
+            batch: i / batchSize + 1,
+          },
+          { status: 500 },
+        )
+      }
+
+      insertedCount += insertData?.length || batch.length
+      console.log(`Inserted batch ${i / batchSize + 1}/${Math.ceil(rolesToInsert.length / batchSize)}`)
     }
 
-    console.log(`Successfully synced ${discordRoles.length} roles`);
+    console.log(`Successfully synced ${insertedCount} roles`)
 
     return NextResponse.json({
       success: true,
-      count: discordRoles.length,
-      message: `Successfully synced ${discordRoles.length} roles from Discord`,
-    });
+      count: insertedCount,
+      message: `Successfully synced ${insertedCount} roles from Discord`,
+    })
   } catch (error) {
     console.error("Sync roles error:", error);
     return NextResponse.json(
