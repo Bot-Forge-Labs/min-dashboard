@@ -9,6 +9,7 @@ import { FaDiscord } from "react-icons/fa";
 import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function LoginForm({
   className,
@@ -17,10 +18,13 @@ export function LoginForm({
   const { signInWithDiscord } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  const router = useRouter();
+
   const handleLogin = async () => {
     setIsLoading(true);
     try {
       await signInWithDiscord();
+      router.push("/dashboard");
       toast.success("Redirecting to Discord...");
     } catch (error) {
       console.error("Login error:", error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import {
   Card,
   CardContent,
@@ -19,43 +19,74 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Eye, Loader2, RefreshCw } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  Eye,
+  Loader2,
+  RefreshCw,
+  Filter,
+  Ban,
+  UserX,
+  AlertTriangle,
+  Clock,
+  Shield,
+  CheckCircle,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import type { ModLog } from "@/types/database";
 import { toast } from "sonner";
 
-export function ModerationTable() {
-  const [modLogs, setModLogs] = useState<ModLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+// Extend the DB type to include the view's extra fields
+interface ModLogWithUsernames extends ModLog {
+  user_username: string | null;
+  action: string; // <- accept any string
 
-  const fetchModLogs = async () => {
+  moderator_username: string | null;
+}
+
+export function ModerationTable() {
+  const [modLogs, setModLogs] = useState<ModLogWithUsernames[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
+  const [guildFilter, setGuildFilter] = useState<string>("all");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [guilds, setGuilds] = useState<Array<{ id: string; name: string }>>([]);
+
+  const fetchModLogs = async (): Promise<void> => {
+    setLoading(true);
     try {
       const supabase = createClient();
-      if (!supabase) {
-        toast.error("Supabase client not available");
-        return;
-      }
 
-      // Try the view first, fallback to regular table if view doesn't exist
+      // Try the view first
+      // ✅ correct: no generic on `.from()`, but on `.select()`
       let { data, error } = await supabase
         .from("mod_logs_with_usernames")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
-      // If view doesn't exist, try the regular table
-      if (error && error.message.includes("does not exist")) {
-        const result = await supabase
+      // Fallback to raw table if view missing
+      if (error?.message.includes("does not exist")) {
+        const res = await supabase
           .from("mod_logs")
           .select("*")
           .order("created_at", { ascending: false })
           .limit(100);
-
-        data = result.data;
-        error = result.error;
+        data = res.data?.map((log) => ({
+          ...log,
+          user_username: "",
+          moderator_username: "",
+        })) as ModLogWithUsernames[];
+        error = res.error;
       }
 
       if (error) {
@@ -64,13 +95,42 @@ export function ModerationTable() {
         return;
       }
 
-      setModLogs(data || []);
+      // Filter out any logs with null required fields and ensure type safety
+      const validLogs = (data || [])
+        .filter(
+          (log): log is ModLogWithUsernames =>
+            log.action !== null &&
+            log.guild_id !== null &&
+            log.user_id !== null &&
+            log.moderator_id !== null &&
+            log.id !== null
+        )
+        .map((log) => ({
+          ...log,
+          action: log.action!,
+          guild_id: log.guild_id!,
+          user_id: log.user_id!,
+          moderator_id: log.moderator_id!,
+          id: log.id!,
+          created_at: log.created_at || new Date().toISOString(),
+        }));
 
-      if (data && data.length > 0) {
+      setModLogs(validLogs);
+
+      // extract guilds from valid logs only
+      const uniqueGuilds = Array.from(
+        new Set(validLogs.map((log) => log.guild_id))
+      ).map((id) => ({
+        id,
+        name: `Guild ${id.slice(-4)}`,
+      }));
+      setGuilds(uniqueGuilds);
+
+      if (data?.length) {
         toast.success(`Loaded ${data.length} moderation logs`);
       }
-    } catch (error) {
-      console.error("Error fetching mod logs:", error);
+    } catch (err) {
+      console.error(err);
       toast.error("Failed to connect to database");
     } finally {
       setLoading(false);
@@ -78,46 +138,68 @@ export function ModerationTable() {
     }
   };
 
+  console.log({
+    modLogs,
+  });
+
   useEffect(() => {
     fetchModLogs();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRefresh = () => {
+  const handleRefresh = (): void => {
     setRefreshing(true);
     fetchModLogs();
   };
 
-  const getActionColor = (action: string) => {
+  const getActionColor = (action: string): string => {
     switch (action.toLowerCase()) {
       case "ban":
-        return "bg-red-500/10 text-red-400 border-red-500/20";
+        return "destructive";
       case "kick":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+        return "destructive";
       case "warn":
-      case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+        return "secondary";
       case "timeout":
-      case "mute":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+        return "secondary";
       case "unban":
-        return "bg-green-500/10 text-green-400 border-green-500/20";
+        return "default";
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20";
+        return "default";
     }
   };
 
-  const filteredLogs = modLogs.filter(
-    (log) =>
-      (log.user_username &&
-        log.user_username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (log.moderator_username &&
-        log.moderator_username
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.user_id.includes(searchTerm) ||
-      log.moderator_id.includes(searchTerm)
-  );
+  const getActionIcon = (action: string) => {
+    switch (action.toLowerCase()) {
+      case "ban":
+        return Ban;
+      case "kick":
+        return UserX;
+      case "warn":
+        return AlertTriangle;
+      case "timeout":
+        return Clock;
+      case "unban":
+        return CheckCircle;
+      default:
+        return Shield;
+    }
+  };
+
+  const filteredLogs = modLogs.filter((log) => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      log.user_username?.toLowerCase().includes(term) ||
+      log.moderator_username?.toLowerCase().includes(term) ||
+      log.action.toLowerCase().includes(term) ||
+      log.user_id.includes(term) ||
+      log.moderator_id.includes(term);
+
+    const matchesAction =
+      actionFilter === "all" || log.action.toLowerCase() === actionFilter;
+    const matchesGuild = guildFilter === "all" || log.guild_id === guildFilter;
+
+    return matchesSearch && matchesAction && matchesGuild;
+  });
 
   const parseDetails = (details: any) => {
     if (typeof details === "string") {
@@ -137,7 +219,6 @@ export function ModerationTable() {
       return "No details provided";
     }
 
-    // Handle common detail fields with nice formatting
     const formattedDetails = [];
 
     if (parsed.reason || parsed.original_reason) {
@@ -157,14 +238,15 @@ export function ModerationTable() {
     }
 
     if (parsed.channel_id) {
-      formattedDetails.push(`Channel: ${parsed.channel_id}`);
+      formattedDetails.push(
+        `Channel: #${parsed.channel_name || parsed.channel_id.slice(-4)}`
+      );
     }
 
     if (parsed.message_id) {
-      formattedDetails.push(`Message: ${parsed.message_id}`);
+      formattedDetails.push(`Message: ${parsed.message_id.slice(-8)}`);
     }
 
-    // Add any other fields that weren't handled above
     Object.entries(parsed).forEach(([key, value]) => {
       if (
         ![
@@ -174,6 +256,7 @@ export function ModerationTable() {
           "expires_at",
           "channel_id",
           "message_id",
+          "channel_name",
         ].includes(key)
       ) {
         formattedDetails.push(
@@ -186,15 +269,12 @@ export function ModerationTable() {
       ? formattedDetails.join(" • ")
       : "No details provided";
   };
-
   if (loading) {
     return (
       <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl">
         <CardContent className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto mb-4" />
-            <p className="text-emerald-200/80">Loading moderation logs...</p>
-          </div>
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto mb-4" />
+          <p className="text-emerald-200/80">Loading moderation logs...</p>
         </CardContent>
       </Card>
     );
@@ -202,6 +282,7 @@ export function ModerationTable() {
 
   return (
     <Card className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 shadow-xl">
+      {/* Header + filters */}
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -233,21 +314,47 @@ export function ModerationTable() {
               className="pl-10 bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
             />
           </div>
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-40 bg-white/5 border-emerald-400/20 text-white">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Action" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-emerald-400/20">
+              <SelectItem value="all">All Actions</SelectItem>
+              <SelectItem value="ban">Ban</SelectItem>
+              <SelectItem value="kick">Kick</SelectItem>
+              <SelectItem value="warn">Warn</SelectItem>
+              <SelectItem value="timeout">Timeout</SelectItem>
+              <SelectItem value="mute">Mute</SelectItem>
+              <SelectItem value="unban">Unban</SelectItem>
+              <SelectItem value="unmute">Unmute</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={guildFilter} onValueChange={setGuildFilter}>
+            <SelectTrigger className="w-40 bg-white/5 border-emerald-400/20 text-white">
+              <SelectValue placeholder="Guild" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-emerald-400/20">
+              <SelectItem value="all">All Guilds</SelectItem>
+              {guilds.map((guild) => (
+                <SelectItem key={guild.id} value={guild.id}>
+                  {guild.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
+
+      {/* Table */}
       <CardContent>
         {filteredLogs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm
-                ? "No logs found matching your search."
+              {searchTerm || actionFilter !== "all" || guildFilter !== "all"
+                ? "No logs found matching your filters."
                 : "No moderation logs found."}
             </p>
-            {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">
-                Moderation logs will appear here when actions are taken.
-              </p>
-            )}
           </div>
         ) : (
           <Table>
@@ -285,7 +392,7 @@ export function ModerationTable() {
                       variant="outline"
                       className={getActionColor(log.action)}
                     >
-                      {log.action}
+                      <span className="ml-1">{log.action}</span>
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -304,12 +411,18 @@ export function ModerationTable() {
                     </div>
                   </TableCell>
                   <TableCell className="text-emerald-200/80 font-mono text-sm">
-                    {log.guild_id}
+                    {guilds.find((g) => g.id === log.guild_id)?.name ||
+                      `Guild ${log.guild_id.slice(-4)}`}
                   </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(log.created_at), {
-                      addSuffix: true,
-                    })}
+                    <div className="text-sm">
+                      {formatDistanceToNow(new Date(log.created_at ?? ""), {
+                        addSuffix: true,
+                      })}
+                    </div>
+                    <div className="text-xs text-emerald-300/60">
+                      {new Date(log.created_at ?? "").toLocaleDateString()}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

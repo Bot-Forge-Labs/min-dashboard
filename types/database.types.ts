@@ -53,6 +53,81 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_settings: {
+        Row: {
+          anti_spam: boolean | null
+          auto_moderation: boolean | null
+          auto_role: boolean | null
+          bot_name: string | null
+          created_at: string | null
+          economy_enabled: boolean | null
+          id: number
+          leveling_system: boolean | null
+          logging_enabled: boolean | null
+          maintenance_mode: boolean | null
+          music_enabled: boolean | null
+          ticket_system: boolean | null
+          updated_at: string | null
+          welcome_messages: boolean | null
+        }
+        Insert: {
+          anti_spam?: boolean | null
+          auto_moderation?: boolean | null
+          auto_role?: boolean | null
+          bot_name?: string | null
+          created_at?: string | null
+          economy_enabled?: boolean | null
+          id?: number
+          leveling_system?: boolean | null
+          logging_enabled?: boolean | null
+          maintenance_mode?: boolean | null
+          music_enabled?: boolean | null
+          ticket_system?: boolean | null
+          updated_at?: string | null
+          welcome_messages?: boolean | null
+        }
+        Update: {
+          anti_spam?: boolean | null
+          auto_moderation?: boolean | null
+          auto_role?: boolean | null
+          bot_name?: string | null
+          created_at?: string | null
+          economy_enabled?: boolean | null
+          id?: number
+          leveling_system?: boolean | null
+          logging_enabled?: boolean | null
+          maintenance_mode?: boolean | null
+          music_enabled?: boolean | null
+          ticket_system?: boolean | null
+          updated_at?: string | null
+          welcome_messages?: boolean | null
+        }
+        Relationships: []
+      }
+      channels: {
+        Row: {
+          created_at: string | null
+          guild_id: string
+          id: string
+          name: string
+          type: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          guild_id: string
+          id: string
+          name: string
+          type?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          guild_id?: string
+          id?: string
+          name?: string
+          type?: number | null
+        }
+        Relationships: []
+      }
       commands: {
         Row: {
           added_at: string | null
@@ -454,6 +529,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_messages: {
+        Row: {
+          channel_id: string
+          count: number | null
+          guild_id: string
+          id: number
+          last_message_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          count?: number | null
+          guild_id: string
+          id?: number
+          last_message_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          count?: number | null
+          guild_id?: string
+          id?: number
+          last_message_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user_messages_channels"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string | null
@@ -497,23 +607,35 @@ export type Database = {
         Row: {
           id: string
           joined_at: string | null
+          last_active: string | null
           left_at: string | null
+          level: number | null
           roles: string[] | null
+          status: string | null
           username: string
+          xp: number | null
         }
         Insert: {
           id: string
           joined_at?: string | null
+          last_active?: string | null
           left_at?: string | null
+          level?: number | null
           roles?: string[] | null
+          status?: string | null
           username: string
+          xp?: number | null
         }
         Update: {
           id?: string
           joined_at?: string | null
+          last_active?: string | null
           left_at?: string | null
+          level?: number | null
           roles?: string[] | null
+          status?: string | null
           username?: string
+          xp?: number | null
         }
         Relationships: []
       }

@@ -1,7 +1,7 @@
 "use client";
 import { createClient } from "@/lib/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { createContext, useEffect, useState } from "react";
 
 const supabase = createClient();
@@ -51,11 +51,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (event === "INITIAL_SESSION") {
         // handle initial session
       } else if (event === "SIGNED_IN") {
+        console.log("Signed in", session);
         // handle sign in event
-        router.push("/dashboard");
         setUser(session?.user ?? null);
         setSession(session);
       } else if (event === "SIGNED_OUT") {
+        router.push("/login");
         // handle sign out event
         setUser(null);
         setSession(null);
@@ -88,6 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithDiscord: AuthContextProps["signInWithDiscord"] = async () => {
+    console.log(`${window.location.origin}/auth/callback    `);
     // this returns { data: { user, session }, error }
     return await supabase.auth.signInWithOAuth({
       provider: "discord",

@@ -63,103 +63,52 @@ export function StatsCards() {
         totalAnnouncements: 0,
       };
 
-      // Fetch users count (handle missing table gracefully)
-      try {
-        const { data: usersData, error: usersError } = await supabase
-          .from("users")
-          .select("*", { count: "exact", head: true });
+      // Fetch all stats in parallel
+      const [
+        usersResult,
+        serversResult,
+        commandsResult,
+        moderationResult,
+        rolesResult,
+        giveawaysResult,
+        announcementsResult,
+      ] = await Promise.allSettled([
+        supabase.from("users").select("*", { count: "exact", head: true }),
+        supabase.from("guild_settings").select("*", { count: "exact", head: true }),
+        supabase.from("commands").select("*", { count: "exact", head: true }),
+        supabase.from("mod_logs").select("*", { count: "exact", head: true }),
+        supabase.from("roles").select("*", { count: "exact", head: true }),
+        supabase.from("giveaways").select("*", { count: "exact", head: true }),
+        supabase.from("announcements").select("*", { count: "exact", head: true }),
+      ])
 
-        if (!usersError && usersData !== null) {
-          newStats.totalUsers = usersData.length || 0;
-        }
-      } catch (error) {
-        console.log("Users table not accessible, using fallback");
-        newStats.totalUsers = 0;
+      // Process results
+      if (usersResult.status === "fulfilled" && !usersResult.value.error) {
+        newStats.totalUsers = usersResult.value.count || 0
       }
 
-      // Fetch servers count
-      try {
-        const { data: serversData, error: serversError } = await supabase
-          .from("guild_settings")
-          .select("*", { count: "exact", head: true });
-
-        if (!serversError && serversData !== null) {
-          newStats.totalServers = serversData.length || 0;
-        }
-      } catch (error) {
-        console.log("Guild settings table not accessible, using fallback");
-        newStats.totalServers = 1; // Default fallback
+      if (serversResult.status === "fulfilled" && !serversResult.value.error) {
+        newStats.totalServers = serversResult.value.count || 0
       }
 
-      // Fetch commands count
-      try {
-        const { data: commandsData, error: commandsError } = await supabase
-          .from("commands")
-          .select("*", { count: "exact", head: true });
-
-        if (!commandsError && commandsData !== null) {
-          newStats.totalCommands = commandsData.length || 0;
-        }
-      } catch (error) {
-        console.log("Commands table not accessible, using fallback");
-        newStats.totalCommands = 25; // Default fallback
+      if (commandsResult.status === "fulfilled" && !commandsResult.value.error) {
+        newStats.totalCommands = commandsResult.value.count || 0
       }
 
-      // Fetch moderation actions count
-      try {
-        const { data: moderationData, error: moderationError } = await supabase
-          .from("mod_logs")
-          .select("*", { count: "exact", head: true });
-
-        if (!moderationError && moderationData !== null) {
-          newStats.totalModerationActions = moderationData.length || 0;
-        }
-      } catch (error) {
-        console.log("Moderation logs table not accessible, using fallback");
-        newStats.totalModerationActions = 0;
+      if (moderationResult.status === "fulfilled" && !moderationResult.value.error) {
+        newStats.totalModerationActions = moderationResult.value.count || 0
       }
 
-      // Fetch roles count
-      try {
-        const { data: rolesData, error: rolesError } = await supabase
-          .from("roles")
-          .select("*", { count: "exact", head: true });
-
-        if (!rolesError && rolesData !== null) {
-          newStats.totalRoles = rolesData.length || 0;
-        }
-      } catch (error) {
-        console.log("Roles table not accessible, using fallback");
-        newStats.totalRoles = 0;
+      if (rolesResult.status === "fulfilled" && !rolesResult.value.error) {
+        newStats.totalRoles = rolesResult.value.count || 0
       }
 
-      // Fetch giveaways count
-      try {
-        const { data: giveawaysData, error: giveawaysError } = await supabase
-          .from("giveaways")
-          .select("*", { count: "exact", head: true });
-
-        if (!giveawaysError && giveawaysData !== null) {
-          newStats.totalGiveaways = giveawaysData.length || 0;
-        }
-      } catch (error) {
-        console.log("Giveaways table not accessible, using fallback");
-        newStats.totalGiveaways = 0;
+      if (giveawaysResult.status === "fulfilled" && !giveawaysResult.value.error) {
+        newStats.totalGiveaways = giveawaysResult.value.count || 0
       }
 
-      // Fetch announcements count
-      try {
-        const { data: announcementsData, error: announcementsError } =
-          await supabase
-            .from("announcements")
-            .select("*", { count: "exact", head: true });
-
-        if (!announcementsError && announcementsData !== null) {
-          newStats.totalAnnouncements = announcementsData.length || 0;
-        }
-      } catch (error) {
-        console.log("Announcements table not accessible, using fallback");
-        newStats.totalAnnouncements = 0;
+      if (announcementsResult.status === "fulfilled" && !announcementsResult.value.error) {
+        newStats.totalAnnouncements = announcementsResult.value.count || 0
       }
 
       setStats(newStats);
@@ -197,56 +146,63 @@ export function StatsCards() {
       title: "Total Users",
       value: stats.totalUsers,
       icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-blue-400",
+      bgColor: "bg-blue-500/10",
+      borderColor: "border-blue-500/20",
       description: "Registered users",
     },
     {
       title: "Active Servers",
       value: stats.totalServers,
       icon: Server,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      borderColor: "border-emerald-500/20",
       description: "Connected guilds",
     },
     {
       title: "Commands",
       value: stats.totalCommands,
       icon: Zap,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-100",
+      color: "text-yellow-400",
+      bgColor: "bg-yellow-500/10",
+      borderColor: "border-yellow-500/20",
       description: "Available commands",
     },
     {
       title: "Moderation Actions",
       value: stats.totalModerationActions,
       icon: Shield,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
+      color: "text-red-400",
+      bgColor: "bg-red-500/10",
+      borderColor: "border-red-500/20",
       description: "Total mod actions",
     },
     {
       title: "Server Roles",
       value: stats.totalRoles,
       icon: Crown,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-purple-400",
+      bgColor: "bg-purple-500/10",
+      borderColor: "border-purple-500/20",
       description: "Managed roles",
     },
     {
       title: "Active Giveaways",
       value: stats.totalGiveaways,
       icon: Activity,
-      color: "text-pink-600",
-      bgColor: "bg-pink-100",
+      color: "text-pink-400",
+      bgColor: "bg-pink-500/10",
+      borderColor: "border-pink-500/20",
       description: "Running giveaways",
     },
     {
       title: "Announcements",
       value: stats.totalAnnouncements,
       icon: MessageSquare,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-100",
+      color: "text-indigo-400",
+      bgColor: "bg-indigo-500/10",
+      borderColor: "border-indigo-500/20",
       description: "Total announcements",
     },
   ];
@@ -301,13 +257,11 @@ export function StatsCards() {
         return (
           <Card
             key={index}
-            className="bg-white/5 backdrop-blur-xl border border-emerald-400/20 hover:bg-white/10 transition-colors"
+            className={`bg-white/5 backdrop-blur-xl border ${stat.borderColor} hover:bg-white/10 transition-all duration-300 hover:scale-105`}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 ">
-              <CardTitle className="text-sm font-medium text-emerald-200/80">
-                {stat.title}
-              </CardTitle>
-              <div className={`rounded-lg ${stat.bgColor}/20`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-emerald-200/80">{stat.title}</CardTitle>
+              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                 <Icon className={`h-4 w-4 ${stat.color}`} />
               </div>
             </CardHeader>

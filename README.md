@@ -1,6 +1,6 @@
-# 🤖 Discord Bot Dashboard
+# 🤖 Minbot Dashboard
 
-A modern, feature-rich dashboard for managing Discord bots built with Next.js, Supabase, and shadcn/ui.
+A modern, feature-rich dashboard for managing Minies Cottage built with Next.js, Supabase, and shadcn/ui.
 
 ![Discord Bot Dashboard](https://img.shields.io/badge/Discord-Bot%20Dashboard-5865F2?style=for-the-badge&logo=discord&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
@@ -32,17 +32,17 @@ A modern, feature-rich dashboard for managing Discord bots built with Next.js, S
 
 ### 1. Clone the Repository
 
-\`\`\`bash
+```bash
 git clone https://github.com/yourusername/discord-bot-dashboard.git
 cd discord-bot-dashboard
 npm install
-\`\`\`
+```
 
 ### 2. Environment Setup
 
-Create a \`.env.local\` file in the root directory:
+Create a `.env.local` file in the root directory:
 
-\`\`\`env
+```env
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -56,18 +56,18 @@ DISCORD_CLIENT_SECRET=your_discord_client_secret
 # Application Configuration
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your_nextauth_secret
-\`\`\`
+```
 
 ### 3. Database Setup
 
 Run the database migration scripts:
 
-\`\`\`bash
+```bash
 # Execute in your Supabase SQL editor or via CLI
 psql -h your-supabase-host -U postgres -d postgres -f scripts/create-tables.sql
 psql -h your-supabase-host -U postgres -d postgres -f scripts/seed-data.sql
 psql -h your-supabase-host -U postgres -d postgres -f scripts/update-roles-table.sql
-\`\`\`
+```
 
 ### 4. Discord Bot Setup
 
@@ -85,9 +85,9 @@ psql -h your-supabase-host -U postgres -d postgres -f scripts/update-roles-table
 
 ### 5. Run Development Server
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
 Visit [http://localhost:3000](http://localhost:3000) to see your dashboard!
 
@@ -96,9 +96,9 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard!
 ### Deploy to Vercel
 
 1. **Connect Repository**
-   \`\`\`bash
+   ```bash
    vercel --prod
-   \`\`\`
+   ```
 
 2. **Set Environment Variables**
    
@@ -116,9 +116,9 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard!
    | \`NEXTAUTH_SECRET\` | Random secret string | Production |
 
 3. **Deploy**
-   \`\`\`bash
+   ```bash
    vercel --prod
-   \`\`\`
+   ```
 
 ### Alternative Deployment Options
 
@@ -128,7 +128,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard!
 
 ## 📁 Project Structure
 
-\`\`\`
+```
 discord-bot-dashboard/
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Authentication pages
@@ -150,7 +150,7 @@ discord-bot-dashboard/
 │   └── update-roles-table.sql    # Schema updates
 ├── hooks/                        # Custom React hooks
 └── middleware.ts                 # Next.js middleware
-\`\`\`
+```
 
 ## 🛠️ Tech Stack
 
@@ -169,32 +169,32 @@ discord-bot-dashboard/
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| \`NEXT_PUBLIC_SUPABASE_URL\` | Supabase project URL | ✅ | - |
-| \`NEXT_PUBLIC_SUPABASE_ANON_KEY\` | Supabase anonymous key | ✅ | - |
-| \`SUPABASE_SERVICE_ROLE_KEY\` | Supabase service role key | ✅ | - |
-| \`DISCORD_BOT_TOKEN\` | Discord bot token | ✅ | - |
-| \`NEXT_PUBLIC_DISCORD_CLIENT_ID\` | Discord application client ID | ✅ | - |
-| \`DISCORD_CLIENT_SECRET\` | Discord application client secret | ✅ | - |
-| \`NEXTAUTH_URL\` | Application URL | ✅ | http://localhost:3000 |
-| \`NEXTAUTH_SECRET\` | NextAuth.js secret | ✅ | - |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | ✅ | - |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | ✅ | - |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | ✅ | - |
+| `DISCORD_BOT_TOKEN` | Discord bot token | ✅ | - |
+| `NEXT_PUBLIC_DISCORD_CLIENT_ID` | Discord application client ID | ✅ | - |
+| `DISCORD_CLIENT_SECRET` | Discord application client secret | ✅ | - |
+| `NEXTAUTH_URL` | Application URL | ✅ | http://localhost:3000 |
+| `NEXTAUTH_SECRET` | NextAuth.js secret | ✅ | - |
 
 ### Discord Bot Permissions
 
-Your Discord bot needs the following permissions:
+Minbot needs the following permissions:
 
-- \`Manage Roles\` (268435456)
-- \`Manage Channels\` (16)
-- \`Send Messages\` (2048)
-- \`Manage Messages\` (8192)
-- \`Read Message History\` (65536)
-- \`Add Reactions\` (64)
+- `Manage Roles` (268435456)
+- `Manage Channels` (16)
+- `Send Messages` (2048)
+- `Manage Messages` (8192)
+- `Read Message History` (65536)
+- `Add Reactions` (64)
 
 **Permission Integer**: \`268521472\`
 
 **Invite URL Template**:
-\`\`\`
+```
 https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=268521472&scope=bot
-\`\`\`
+```
 
 ## 📚 API Documentation
 
@@ -202,23 +202,23 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=26
 
 Sync Discord roles with your database.
 
-**Endpoint**: \`POST /api/sync-discord-roles\`
+**Endpoint**: `POST /api/sync-discord-roles`
 
 **Request Body**:
-\`\`\`json
+```json
 {
   "guildId": "123456789012345678"
 }
-\`\`\`
+```
 
 **Response**:
-\`\`\`json
+```json
 {
   "success": true,
   "count": 15,
   "message": "Successfully synced 15 roles from Discord"
 }
-\`\`\`
+```
 
 ### Error Handling
 
@@ -234,24 +234,24 @@ The API provides detailed error messages for common issues:
 We welcome contributions! Please follow these steps:
 
 1. **Fork the Repository**
-   \`\`\`bash
+   ```bash
    git fork https://github.com/yourusername/discord-bot-dashboard.git
-   \`\`\`
+   ```
 
 2. **Create Feature Branch**
-   \`\`\`bash
+   ```bash
    git checkout -b feature/amazing-feature
-   \`\`\`
+   ```
 
 3. **Commit Changes**
-   \`\`\`bash
+   ```bash
    git commit -m 'Add amazing feature'
-   \`\`\`
+   ```
 
 4. **Push to Branch**
-   \`\`\`bash
+   ```bash
    git push origin feature/amazing-feature
-   \`\`\`
+   ```
 
 5. **Open Pull Request**
    - Describe your changes
@@ -271,29 +271,29 @@ We welcome contributions! Please follow these steps:
 ### Common Issues
 
 #### Database Connection Errors
-\`\`\`
+```
 Error: Database connection failed
-\`\`\`
+```
 **Solution**: Check your Supabase URL and anon key in environment variables.
 
 #### Discord API Errors
-\`\`\`
+```
 Error: Invalid Discord bot token
-\`\`\`
+```
 **Solution**: Verify your bot token in Vercel environment variables.
 
 #### Role Sync Issues
-\`\`\`
+```
 Error: Bot does not have permission to access this guild
-\`\`\`
+```
 **Solution**: Ensure your bot has the required permissions and is added to the server.
 
 ### Debug Mode
 
 Enable debug logging by adding to your environment:
-\`\`\`env
+```env
 NODE_ENV=development
-\`\`\`
+```
 
 ## 📄 License
 
