@@ -1,5 +1,7 @@
 import { RoleManagementPanel } from "@/components/roles/role-management-panel"
 
+const guildId = "1386840977188061194";
+
 export default function RolesPage() {
   return (
     <div className="space-y-6">
@@ -9,7 +11,7 @@ export default function RolesPage() {
           Create, edit, and manage server roles and permissions.
         </p>
       </div>
-      <RoleManagementPanel />
+      <RoleManagementPanel guildId={guildId} />
     </div>
   )
 }
