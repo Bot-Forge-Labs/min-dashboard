@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/new-path"
+      "source": "/dashboard",
+      "destination": "/api/dashboard"
     }
   ]
 }

@@ -1,3 +1,4 @@
+// role-management-panel.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -63,11 +64,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
 
       const data = await response.json();
 
-      console.log("Response status:", response.status);
-      console.log("Response data:", data);
-
       if (!response.ok) {
-        console.error("API Error:", data);
         throw new Error(data.error || `HTTP ${response.status}`);
       }
 
@@ -97,7 +94,6 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
   const formatPermissions = (permissions?: number): string => {
     if (!permissions || permissions === 0) return "No permissions";
 
-    // Convert to readable permissions (simplified)
     const perms = [];
     if (permissions & 0x8) perms.push("Administrator");
     if (permissions & 0x10) perms.push("Manage Channels");
@@ -169,8 +165,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
               No roles found
             </h3>
             <p className="text-gray-500 mb-4">
-              Click "Sync from Discord" to import roles from your Discord
-              server.
+              Click "Sync from Discord" to import roles from your Discord server.
             </p>
             <Button onClick={syncDiscordRoles} disabled={syncing}>
               <RefreshCw
