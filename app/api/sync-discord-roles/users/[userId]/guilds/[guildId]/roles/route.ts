@@ -1,7 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function PUT(request: NextRequest, { params }: { params: { userId: string; guildId: string } }) {
+type UserRoleInsert = {
+  user_id: string
+  guild_id: string
+  role_id: string
+  assigned_at?: string | null
+  assigned_by: string
+  id?: string
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { userId: string; guildId: string } }
+) {
   try {
     const { userId, guildId } = params
     const body = await request.json()
@@ -11,18 +23,15 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
       return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
     }
 
-    const { roles, permissions, communication_disabled_until } = body
+    const { roles } = body
 
-    // Update user roles in the user_roles table
     if (Array.isArray(roles)) {
-      // First, delete existing roles for this user in this guild
       await supabase.from("user_roles").delete().eq("user_id", userId).eq("guild_id", guildId)
 
-      // Insert new roles
       if (roles.length > 0) {
         const assignedBy = "system" // or fetch admin user ID or bot user ID if available
 
-        const roleInserts = roles.map((roleId) => ({
+        const roleInserts: UserRoleInsert[] = roles.map((roleId) => ({
           user_id: userId,
           guild_id: guildId,
           role_id: String(roleId),
@@ -52,7 +61,10 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string; guildId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { userId: string; guildId: string } }
+) {
   try {
     const { userId, guildId } = params
     const supabase = await createClient()
