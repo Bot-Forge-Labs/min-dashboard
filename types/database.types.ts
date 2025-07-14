@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          event_data: Json | null
+          event_type: string
+          guild_id: string | null
+          id: number
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          event_data?: Json | null
+          event_type: string
+          guild_id?: string | null
+          id?: number
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          event_data?: Json | null
+          event_type?: string
+          guild_id?: string | null
+          id?: number
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           channel_id: string
@@ -22,6 +49,7 @@ export type Database = {
           created_by: string
           embed_color: number | null
           footer_text: string | null
+          guild_id: string
           id: number
           image_url: string | null
           thumbnail_url: string | null
@@ -34,6 +62,7 @@ export type Database = {
           created_by: string
           embed_color?: number | null
           footer_text?: string | null
+          guild_id: string
           id?: number
           image_url?: string | null
           thumbnail_url?: string | null
@@ -46,6 +75,7 @@ export type Database = {
           created_by?: string
           embed_color?: number | null
           footer_text?: string | null
+          guild_id?: string
           id?: number
           image_url?: string | null
           thumbnail_url?: string | null
@@ -104,6 +134,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_status: {
+        Row: {
+          activity_name: string | null
+          activity_type: string | null
+          command_count: number | null
+          commands_executed: number | null
+          cpu_usage: number | null
+          created_at: string | null
+          guild_count: number | null
+          guilds: number | null
+          id: string
+          last_updated: string | null
+          memory_usage: number | null
+          status: string
+          uptime: number | null
+          uptime_seconds: number | null
+          user_count: number | null
+          users: number | null
+          version: string | null
+        }
+        Insert: {
+          activity_name?: string | null
+          activity_type?: string | null
+          command_count?: number | null
+          commands_executed?: number | null
+          cpu_usage?: number | null
+          created_at?: string | null
+          guild_count?: number | null
+          guilds?: number | null
+          id?: string
+          last_updated?: string | null
+          memory_usage?: number | null
+          status?: string
+          uptime?: number | null
+          uptime_seconds?: number | null
+          user_count?: number | null
+          users?: number | null
+          version?: string | null
+        }
+        Update: {
+          activity_name?: string | null
+          activity_type?: string | null
+          command_count?: number | null
+          commands_executed?: number | null
+          cpu_usage?: number | null
+          created_at?: string | null
+          guild_count?: number | null
+          guilds?: number | null
+          id?: string
+          last_updated?: string | null
+          memory_usage?: number | null
+          status?: string
+          uptime?: number | null
+          uptime_seconds?: number | null
+          user_count?: number | null
+          users?: number | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       channels: {
         Row: {
           created_at: string | null
@@ -125,6 +215,30 @@ export type Database = {
           id?: string
           name?: string
           type?: number | null
+        }
+        Relationships: []
+      }
+      command_usage_logs: {
+        Row: {
+          command_name: string
+          guild_id: string | null
+          id: string
+          used_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          command_name: string
+          guild_id?: string | null
+          id?: string
+          used_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          command_name?: string
+          guild_id?: string | null
+          id?: string
+          used_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -205,6 +319,7 @@ export type Database = {
           duration_minutes: number | null
           end_time: string
           ended: boolean | null
+          guild_id: string | null
           id: number
           message_id: string | null
           prize: string
@@ -219,6 +334,7 @@ export type Database = {
           duration_minutes?: number | null
           end_time: string
           ended?: boolean | null
+          guild_id?: string | null
           id?: number
           message_id?: string | null
           prize: string
@@ -233,6 +349,7 @@ export type Database = {
           duration_minutes?: number | null
           end_time?: string
           ended?: boolean | null
+          guild_id?: string | null
           id?: number
           message_id?: string | null
           prize?: string
@@ -241,89 +358,290 @@ export type Database = {
         }
         Relationships: []
       }
-      guild_settings: {
+      guild_commands: {
         Row: {
+          command_name: string
           created_at: string | null
-          guild_id: number
-          guild_name: string | null
-          join_leave_channel_id: number | null
-          muted_role_id: number | null
-          staff_log_channel_id: number | null
-          ticket_channel_id: number | null
+          guild_id: string
+          id: string
+          is_enabled: boolean | null
+          last_used: string | null
           updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
+          command_name: string
           created_at?: string | null
-          guild_id: number
-          guild_name?: string | null
-          join_leave_channel_id?: number | null
-          muted_role_id?: number | null
-          staff_log_channel_id?: number | null
-          ticket_channel_id?: number | null
+          guild_id: string
+          id?: string
+          is_enabled?: boolean | null
+          last_used?: string | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
+          command_name?: string
           created_at?: string | null
-          guild_id?: number
+          guild_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          last_used?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
+      guild_settings: {
+        Row: {
+          anti_spam: boolean | null
+          auto_moderation: boolean | null
+          auto_role: string | null
+          created_at: string | null
+          economy_enabled: boolean | null
+          guild_id: string
+          guild_name: string | null
+          join_leave_channel_id: number | null
+          leave_message: string | null
+          level_up_channel: string | null
+          level_up_message: string | null
+          leveling_system: boolean | null
+          logging_enabled: boolean | null
+          maintenance_mode: boolean | null
+          mod_log_channel: number | null
+          music_enabled: boolean | null
+          muted_role_id: number | null
+          prefix: string | null
+          staff_log_channel_id: number | null
+          ticket_channel_id: number | null
+          ticket_system: boolean | null
+          updated_at: string | null
+          welcome_channel_id: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          anti_spam?: boolean | null
+          auto_moderation?: boolean | null
+          auto_role?: string | null
+          created_at?: string | null
+          economy_enabled?: boolean | null
+          guild_id: string
           guild_name?: string | null
           join_leave_channel_id?: number | null
+          leave_message?: string | null
+          level_up_channel?: string | null
+          level_up_message?: string | null
+          leveling_system?: boolean | null
+          logging_enabled?: boolean | null
+          maintenance_mode?: boolean | null
+          mod_log_channel?: number | null
+          music_enabled?: boolean | null
           muted_role_id?: number | null
+          prefix?: string | null
           staff_log_channel_id?: number | null
           ticket_channel_id?: number | null
+          ticket_system?: boolean | null
           updated_at?: string | null
+          welcome_channel_id?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          anti_spam?: boolean | null
+          auto_moderation?: boolean | null
+          auto_role?: string | null
+          created_at?: string | null
+          economy_enabled?: boolean | null
+          guild_id?: string
+          guild_name?: string | null
+          join_leave_channel_id?: number | null
+          leave_message?: string | null
+          level_up_channel?: string | null
+          level_up_message?: string | null
+          leveling_system?: boolean | null
+          logging_enabled?: boolean | null
+          maintenance_mode?: boolean | null
+          mod_log_channel?: number | null
+          music_enabled?: boolean | null
+          muted_role_id?: number | null
+          prefix?: string | null
+          staff_log_channel_id?: number | null
+          ticket_channel_id?: number | null
+          ticket_system?: boolean | null
+          updated_at?: string | null
+          welcome_channel_id?: string | null
+          welcome_message?: string | null
         }
         Relationships: []
       }
       guilds: {
         Row: {
+          afk_channel_id: string | null
+          afk_timeout: number | null
+          banner: string | null
+          bot_permissions: string[] | null
           created_at: string | null
+          default_message_notifications: number | null
+          description: string | null
+          discovery_splash: string | null
+          emojis: Json | null
+          explicit_content_filter: number | null
+          features: string[] | null
           guild_id: string
-          name: string | null
+          icon: string | null
+          id: string
+          joined_at: string | null
+          large: boolean | null
+          max_members: number | null
+          max_presences: number | null
+          member_count: number | null
+          mfa_level: number | null
+          name: string
+          nsfw_level: number | null
           owner_id: string | null
+          permissions: string[] | null
+          preferred_locale: string | null
+          premium_progress_bar_enabled: boolean | null
+          premium_subscription_count: number | null
+          premium_tier: number | null
+          public_updates_channel_id: string | null
+          region: string | null
+          roles: Json | null
+          rules_channel_id: string | null
+          splash: string | null
+          system_channel_flags: string[] | null
+          system_channel_id: string | null
+          unavailable: boolean | null
           updated_at: string | null
+          vanity_url_code: string | null
+          verification_level: number | null
+          widget_channel_id: string | null
+          widget_enabled: boolean | null
         }
         Insert: {
+          afk_channel_id?: string | null
+          afk_timeout?: number | null
+          banner?: string | null
+          bot_permissions?: string[] | null
           created_at?: string | null
+          default_message_notifications?: number | null
+          description?: string | null
+          discovery_splash?: string | null
+          emojis?: Json | null
+          explicit_content_filter?: number | null
+          features?: string[] | null
           guild_id: string
-          name?: string | null
+          icon?: string | null
+          id?: string
+          joined_at?: string | null
+          large?: boolean | null
+          max_members?: number | null
+          max_presences?: number | null
+          member_count?: number | null
+          mfa_level?: number | null
+          name: string
+          nsfw_level?: number | null
           owner_id?: string | null
+          permissions?: string[] | null
+          preferred_locale?: string | null
+          premium_progress_bar_enabled?: boolean | null
+          premium_subscription_count?: number | null
+          premium_tier?: number | null
+          public_updates_channel_id?: string | null
+          region?: string | null
+          roles?: Json | null
+          rules_channel_id?: string | null
+          splash?: string | null
+          system_channel_flags?: string[] | null
+          system_channel_id?: string | null
+          unavailable?: boolean | null
           updated_at?: string | null
+          vanity_url_code?: string | null
+          verification_level?: number | null
+          widget_channel_id?: string | null
+          widget_enabled?: boolean | null
         }
         Update: {
+          afk_channel_id?: string | null
+          afk_timeout?: number | null
+          banner?: string | null
+          bot_permissions?: string[] | null
           created_at?: string | null
+          default_message_notifications?: number | null
+          description?: string | null
+          discovery_splash?: string | null
+          emojis?: Json | null
+          explicit_content_filter?: number | null
+          features?: string[] | null
           guild_id?: string
-          name?: string | null
+          icon?: string | null
+          id?: string
+          joined_at?: string | null
+          large?: boolean | null
+          max_members?: number | null
+          max_presences?: number | null
+          member_count?: number | null
+          mfa_level?: number | null
+          name?: string
+          nsfw_level?: number | null
           owner_id?: string | null
+          permissions?: string[] | null
+          preferred_locale?: string | null
+          premium_progress_bar_enabled?: boolean | null
+          premium_subscription_count?: number | null
+          premium_tier?: number | null
+          public_updates_channel_id?: string | null
+          region?: string | null
+          roles?: Json | null
+          rules_channel_id?: string | null
+          splash?: string | null
+          system_channel_flags?: string[] | null
+          system_channel_id?: string | null
+          unavailable?: boolean | null
           updated_at?: string | null
+          vanity_url_code?: string | null
+          verification_level?: number | null
+          widget_channel_id?: string | null
+          widget_enabled?: boolean | null
         }
         Relationships: []
       }
       mod_logs: {
         Row: {
           action: string
+          case_id: string | null
           created_at: string | null
           details: Json | null
+          expires_at: string | null
           guild_id: string
           id: number
           moderator_id: string
+          reason: string | null
+          timestamp: string | null
           user_id: string
         }
         Insert: {
           action: string
+          case_id?: string | null
           created_at?: string | null
           details?: Json | null
+          expires_at?: string | null
           guild_id: string
           id?: number
           moderator_id: string
+          reason?: string | null
+          timestamp?: string | null
           user_id: string
         }
         Update: {
           action?: string
+          case_id?: string | null
           created_at?: string | null
           details?: Json | null
+          expires_at?: string | null
           guild_id?: string
           id?: number
           moderator_id?: string
+          reason?: string | null
+          timestamp?: string | null
           user_id?: string
         }
         Relationships: []
@@ -461,7 +779,7 @@ export type Database = {
           managed: boolean | null
           mentionable: boolean | null
           name: string | null
-          permissions: number | null
+          permissions: string | null
           position: number | null
           role_id: string
           updated_at: string | null
@@ -474,7 +792,7 @@ export type Database = {
           managed?: boolean | null
           mentionable?: boolean | null
           name?: string | null
-          permissions?: number | null
+          permissions?: string | null
           position?: number | null
           role_id: string
           updated_at?: string | null
@@ -487,20 +805,12 @@ export type Database = {
           managed?: boolean | null
           mentionable?: boolean | null
           name?: string | null
-          permissions?: number | null
+          permissions?: string | null
           position?: number | null
           role_id?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_guild_id_roles"
-            columns: ["guild_id"]
-            isOneToOne: false
-            referencedRelation: "guilds"
-            referencedColumns: ["guild_id"]
-          },
-        ]
+        Relationships: []
       }
       staff_roles: {
         Row: {
@@ -605,35 +915,71 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar: string | null
+          bot: boolean | null
+          discord_id: string | null
+          discriminator: string | null
+          email: string | null
+          flags: string[] | null
           id: string
+          is_admin: boolean | null
           joined_at: string | null
           last_active: string | null
           left_at: string | null
           level: number | null
+          premium_type: number | null
+          public_flags: string[] | null
           roles: string[] | null
           status: string | null
+          system: boolean | null
+          updated_at: string | null
+          user_id: string | null
           username: string
           xp: number | null
         }
         Insert: {
+          avatar?: string | null
+          bot?: boolean | null
+          discord_id?: string | null
+          discriminator?: string | null
+          email?: string | null
+          flags?: string[] | null
           id: string
+          is_admin?: boolean | null
           joined_at?: string | null
           last_active?: string | null
           left_at?: string | null
           level?: number | null
+          premium_type?: number | null
+          public_flags?: string[] | null
           roles?: string[] | null
           status?: string | null
+          system?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
           username: string
           xp?: number | null
         }
         Update: {
+          avatar?: string | null
+          bot?: boolean | null
+          discord_id?: string | null
+          discriminator?: string | null
+          email?: string | null
+          flags?: string[] | null
           id?: string
+          is_admin?: boolean | null
           joined_at?: string | null
           last_active?: string | null
           left_at?: string | null
           level?: number | null
+          premium_type?: number | null
+          public_flags?: string[] | null
           roles?: string[] | null
           status?: string | null
+          system?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
           username?: string
           xp?: number | null
         }
@@ -641,6 +987,27 @@ export type Database = {
       }
     }
     Views: {
+      database_inspection: {
+        Row: {
+          column_default: string | null
+          column_name: unknown | null
+          data_type: string | null
+          foreign_column_name: unknown | null
+          foreign_key_name: unknown | null
+          foreign_table_name: unknown | null
+          foreign_table_schema: unknown | null
+          is_nullable: string | null
+          rls_command: string | null
+          rls_permissive: string | null
+          rls_policy_name: unknown | null
+          rls_qual: string | null
+          rls_roles: unknown[] | null
+          rls_with_check: string | null
+          table_name: unknown | null
+          table_schema: unknown | null
+        }
+        Relationships: []
+      }
       mod_logs_with_usernames: {
         Row: {
           action: string | null
@@ -657,9 +1024,67 @@ export type Database = {
       }
     }
     Functions: {
+      increment_command_usage: {
+        Args: { command_name: string }
+        Returns: undefined
+      }
       is_user_staff_web: {
         Args: { user_discord_id: string; guild_discord_id: string }
         Returns: boolean
+      }
+      safe_upsert_guild: {
+        Args: {
+          p_guild_id: string
+          p_name: string
+          p_icon?: string
+          p_description?: string
+          p_owner_id?: string
+          p_member_count?: number
+          p_features?: string[]
+          p_premium_tier?: number
+          p_joined_at?: string
+        }
+        Returns: Json
+      }
+      upsert_guild: {
+        Args: {
+          p_guild_id: string
+          p_name: string
+          p_icon?: string
+          p_description?: string
+          p_owner_id?: string
+          p_member_count?: number
+          p_features?: string[]
+        }
+        Returns: {
+          id: string
+          guild_id: string
+          name: string
+          icon: string
+          description: string
+          owner_id: string
+          member_count: number
+          features: string[]
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      upsert_guild_command: {
+        Args: {
+          p_guild_id: string
+          p_command_name: string
+          p_is_enabled?: boolean
+          p_usage_count?: number
+        }
+        Returns: {
+          id: string
+          guild_id: string
+          command_name: string
+          is_enabled: boolean
+          usage_count: number
+          created_at: string
+          updated_at: string
+        }[]
       }
     }
     Enums: {

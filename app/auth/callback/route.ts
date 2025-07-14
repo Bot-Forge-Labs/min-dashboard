@@ -7,9 +7,12 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   // if "next" is in param, use it as the redirect URL
   let next = searchParams.get("next") ?? "/dashboard";
+
+  console.log("Next:", next);
+  
   if (!next.startsWith("/")) {
     // if "next" is not a relative URL, use the default
-    next = "/";
+    next = "/dashboard";
   }
 
   if (code) {

@@ -24,7 +24,6 @@ export function LoginForm({
     setIsLoading(true);
     try {
       await signInWithDiscord();
-      router.push("/dashboard");
       toast.success("Redirecting to Discord...");
     } catch (error) {
       console.error("Login error:", error);

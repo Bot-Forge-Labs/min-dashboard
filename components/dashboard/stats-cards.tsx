@@ -74,41 +74,57 @@ export function StatsCards() {
         announcementsResult,
       ] = await Promise.allSettled([
         supabase.from("users").select("*", { count: "exact", head: true }),
-        supabase.from("guild_settings").select("*", { count: "exact", head: true }),
+        supabase
+          .from("guild_settings")
+          .select("*", { count: "exact", head: true }),
         supabase.from("commands").select("*", { count: "exact", head: true }),
         supabase.from("mod_logs").select("*", { count: "exact", head: true }),
         supabase.from("roles").select("*", { count: "exact", head: true }),
         supabase.from("giveaways").select("*", { count: "exact", head: true }),
-        supabase.from("announcements").select("*", { count: "exact", head: true }),
-      ])
+        supabase
+          .from("announcements")
+          .select("*", { count: "exact", head: true }),
+      ]);
 
       // Process results
       if (usersResult.status === "fulfilled" && !usersResult.value.error) {
-        newStats.totalUsers = usersResult.value.count || 0
+        newStats.totalUsers = usersResult.value.count || 0;
       }
 
       if (serversResult.status === "fulfilled" && !serversResult.value.error) {
-        newStats.totalServers = serversResult.value.count || 0
+        newStats.totalServers = serversResult.value.count || 0;
       }
 
-      if (commandsResult.status === "fulfilled" && !commandsResult.value.error) {
-        newStats.totalCommands = commandsResult.value.count || 0
+      if (
+        commandsResult.status === "fulfilled" &&
+        !commandsResult.value.error
+      ) {
+        newStats.totalCommands = commandsResult.value.count || 0;
       }
 
-      if (moderationResult.status === "fulfilled" && !moderationResult.value.error) {
-        newStats.totalModerationActions = moderationResult.value.count || 0
+      if (
+        moderationResult.status === "fulfilled" &&
+        !moderationResult.value.error
+      ) {
+        newStats.totalModerationActions = moderationResult.value.count || 0;
       }
 
       if (rolesResult.status === "fulfilled" && !rolesResult.value.error) {
-        newStats.totalRoles = rolesResult.value.count || 0
+        newStats.totalRoles = rolesResult.value.count || 0;
       }
 
-      if (giveawaysResult.status === "fulfilled" && !giveawaysResult.value.error) {
-        newStats.totalGiveaways = giveawaysResult.value.count || 0
+      if (
+        giveawaysResult.status === "fulfilled" &&
+        !giveawaysResult.value.error
+      ) {
+        newStats.totalGiveaways = giveawaysResult.value.count || 0;
       }
 
-      if (announcementsResult.status === "fulfilled" && !announcementsResult.value.error) {
-        newStats.totalAnnouncements = announcementsResult.value.count || 0
+      if (
+        announcementsResult.status === "fulfilled" &&
+        !announcementsResult.value.error
+      ) {
+        newStats.totalAnnouncements = announcementsResult.value.count || 0;
       }
 
       setStats(newStats);
@@ -259,8 +275,10 @@ export function StatsCards() {
             key={index}
             className={`bg-white/5 backdrop-blur-xl border ${stat.borderColor} hover:bg-white/10 transition-all duration-300 hover:scale-105`}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-emerald-200/80">{stat.title}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-emerald-200/80">
+                {stat.title}
+              </CardTitle>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                 <Icon className={`h-4 w-4 ${stat.color}`} />
               </div>

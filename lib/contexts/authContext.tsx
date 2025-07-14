@@ -54,12 +54,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Signed in", session);
         // handle sign in event
         setUser(session?.user ?? null);
+
         setSession(session);
+        router.push("/dashboard");
       } else if (event === "SIGNED_OUT") {
-        router.push("/login");
         // handle sign out event
         setUser(null);
         setSession(null);
+        router.push("/login");
       }
 
       // const currentUser = session?.user ?? null;
@@ -71,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription?.unsubscribe?.();
-  }, []);
+  }, [user]);
 
   const signUp: AuthContextProps["signUp"] = async (email, password) => {
     // this returns { data: { user, session }, error }
@@ -100,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider
+    <AuthContext
       value={{
         user,
         session,
@@ -112,6 +114,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }}
     >
       {children}
-    </AuthContext.Provider>
+    </AuthContext>
   );
 };
