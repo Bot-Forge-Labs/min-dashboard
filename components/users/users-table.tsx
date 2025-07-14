@@ -1,83 +1,112 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { MoreHorizontal, Search, Edit, Trash2, Loader2, RefreshCw, UserCheck, UserX } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { createClient } from "@/lib/supabase/client"
-import type { User } from "@/types/database"
-import { toast } from "sonner"
-import { formatDistanceToNow } from "date-fns"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  MoreHorizontal,
+  Search,
+  Edit,
+  Trash2,
+  Loader2,
+  RefreshCw,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@/types/database";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 export function UsersTable() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchUsers = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const { data, error } = await supabase
         .from("users")
         .select("*")
         .order("joined_at", { ascending: false })
-        .limit(100)
+        .limit(100);
 
       if (error) {
-        console.error("Error fetching users:", error)
-        toast.error("Failed to fetch users")
-        return
+        console.error("Error fetching users:", error);
+        toast.error("Failed to fetch users");
+        return;
       }
 
-      setUsers(data || [])
+      setUsers(data || []);
       if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} users`)
+        toast.success(`Loaded ${data.length} users`);
       }
     } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching users:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    fetchUsers();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchUsers()
-  }
+    setRefreshing(true);
+    fetchUsers();
+  };
 
-  const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = users.filter((user) =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getUserStatus = (user: User) => {
-    if (user.left_at) return "left"
-    return "active"
-  }
+    if (user.left_at) return "left";
+    return "active";
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
       case "left":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       default:
-        return "bg-slate-500/10 text-slate-400 border-slate-500/20"
+        return "bg-slate-500/10 text-slate-400 border-slate-500/20";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -89,7 +118,7 @@ export function UsersTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -98,7 +127,9 @@ export function UsersTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Users</CardTitle>
-            <CardDescription className="text-emerald-200/80">Manage server members and their roles</CardDescription>
+            <CardDescription className="text-emerald-200/80">
+              Manage server members and their roles
+            </CardDescription>
           </div>
           <Button
             variant="outline"
@@ -107,7 +138,9 @@ export function UsersTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -127,10 +160,14 @@ export function UsersTable() {
         {filteredUsers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No users found matching your search." : "No users found."}
+              {searchTerm
+                ? "No users found matching your search."
+                : "No users found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Users will appear here once they join your servers.</p>
+              <p className="text-sm text-emerald-300/40">
+                Users will appear here once they join your servers.
+              </p>
             )}
           </div>
         ) : (
@@ -142,19 +179,35 @@ export function UsersTable() {
                 <TableHead className="text-emerald-200">Joined</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
                 <TableHead className="text-emerald-200">Roles</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell className="font-medium text-white">{user.username}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{user.id}</TableCell>
+                <TableRow
+                  key={user.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
+                  <TableCell className="font-medium text-white">
+                    {user.username}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {user.id}
+                  </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(user.joined_at), { addSuffix: true })}
+                    {user.joined_at
+                      ? formatDistanceToNow(new Date(user.joined_at), {
+                          addSuffix: true,
+                        })
+                      : "Unknown"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getStatusColor(getUserStatus(user))}>
+                    <Badge
+                      variant="outline"
+                      className={getStatusColor(getUserStatus(user))}
+                    >
                       {getUserStatus(user) === "active" ? (
                         <>
                           <UserCheck className="w-3 h-3 mr-1" />
@@ -172,7 +225,11 @@ export function UsersTable() {
                     {user.roles && user.roles.length > 0 ? (
                       <div className="flex gap-1 flex-wrap">
                         {user.roles.slice(0, 2).map((role, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {role}
                           </Badge>
                         ))}
@@ -197,7 +254,10 @@ export function UsersTable() {
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-white/10 backdrop-blur-xl border-emerald-400/20"
+                      >
                         <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Roles
@@ -219,5 +279,5 @@ export function UsersTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
