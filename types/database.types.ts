@@ -1019,7 +1019,7 @@ export type Database = {
           discriminator?: string | null
           email?: string | null
           flags?: string[] | null
-          id: string
+          id?: string
           is_admin?: boolean | null
           joined_at?: string | null
           last_active?: string | null
