@@ -2,23 +2,26 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
 interface DiscordRole {
-  id: string
-  name: string
-  color: number
-  hoist: boolean
-  position: number
-  permissions: string
-  managed: boolean
-  mentionable: boolean
+  id: string;
+  name: string;
+  color: number;
+  hoist: boolean;
+  position: number;
+  permissions: string;
+  managed: boolean;
+  mentionable: boolean;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { guildId } = body
+    const body = await request.json();
+    const { guildId } = body;
 
     if (!guildId) {
-      return NextResponse.json({ error: "Guild ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Guild ID is required" },
+        { status: 400 }
+      );
     }
 
     // Check for required environment variables
@@ -27,13 +30,14 @@ export async function POST(request: NextRequest) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!botToken) {
-      console.error("Discord bot token not configured")
+      console.error("Discord bot token not configured");
       return NextResponse.json(
         {
-          error: "Discord bot token not configured. Please add DISCORD_BOT_TOKEN to your Vercel environment variables.",
+          error:
+            "Discord bot token not configured. Please add DISCORD_BOT_TOKEN to your Vercel environment variables.",
         },
-        { status: 500 },
-      )
+        { status: 500 }
+      );
     }
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -50,46 +54,57 @@ export async function POST(request: NextRequest) {
     console.log(`Fetching roles for guild: ${guildId}`)
 
     // Fetch roles from Discord API
-    const discordResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        "Content-Type": "application/json",
-      },
-    })
+    const discordResponse = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/roles`,
+      {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!discordResponse.ok) {
-      const errorText = await discordResponse.text()
+      const errorText = await discordResponse.text();
       console.error("Discord API error:", {
         status: discordResponse.status,
         statusText: discordResponse.statusText,
         body: errorText,
-      })
+      });
 
       if (discordResponse.status === 401) {
         return NextResponse.json(
-          { error: "Invalid Discord bot token. Please check your DISCORD_BOT_TOKEN environment variable in Vercel." },
-          { status: 401 },
-        )
+          {
+            error:
+              "Invalid Discord bot token. Please check your DISCORD_BOT_TOKEN environment variable in Vercel.",
+          },
+          { status: 401 }
+        );
       } else if (discordResponse.status === 403) {
         return NextResponse.json(
           {
             error:
               "Bot does not have permission to access this guild. Make sure the bot is added to your Discord server with proper permissions.",
           },
-          { status: 403 },
-        )
+          { status: 403 }
+        );
       } else if (discordResponse.status === 404) {
-        return NextResponse.json({ error: "Guild not found. Please check the guild ID." }, { status: 404 })
+        return NextResponse.json(
+          { error: "Guild not found. Please check the guild ID." },
+          { status: 404 }
+        );
       } else {
         return NextResponse.json(
-          { error: `Discord API error: ${discordResponse.status} ${discordResponse.statusText}` },
-          { status: discordResponse.status },
-        )
+          {
+            error: `Discord API error: ${discordResponse.status} ${discordResponse.statusText}`,
+          },
+          { status: discordResponse.status }
+        );
       }
     }
 
-    const discordRoles: DiscordRole[] = await discordResponse.json()
-    console.log(`Fetched ${discordRoles.length} roles from Discord`)
+    const discordRoles: DiscordRole[] = await discordResponse.json();
+    console.log(`Fetched ${discordRoles.length} roles from Discord`);
 
     if (discordRoles.length === 0) {
       return NextResponse.json({
@@ -177,16 +192,21 @@ export async function POST(request: NextRequest) {
       message: `Successfully synced ${insertedCount} roles from Discord`,
     })
   } catch (error) {
-    console.error("Sync roles error:", error)
+    console.error("Sync roles error:", error);
     return NextResponse.json(
       {
-        error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `Internal server error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
       },
-      { status: 500 },
-    )
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
-  return NextResponse.json({ message: "Use POST to sync roles from Discord" }, { status: 405 })
+  return NextResponse.json(
+    { message: "Use POST to sync roles from Discord" },
+    { status: 405 }
+  );
 }
