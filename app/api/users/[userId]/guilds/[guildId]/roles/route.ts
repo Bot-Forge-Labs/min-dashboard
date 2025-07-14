@@ -51,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
       guild_id: guildId,
       role_id: roleId,
       assigned_at: new Date().toISOString(),
+      assigned_by: "system", 
     }))
 
     const { data, error } = await supabase.from("user_roles").insert(rolesToInsert).select()
