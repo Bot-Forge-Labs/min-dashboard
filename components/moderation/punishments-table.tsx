@@ -122,15 +122,20 @@ export function PunishmentsTable() {
     }
   };
 
-  const filteredPunishments = punishments.filter(
-    (punishment) =>
-      punishment.command_name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      punishment.user_id.includes(searchTerm) ||
-      punishment.moderator_id.includes(searchTerm) ||
-      punishment.reason.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPunishments = punishments.filter((punishment) => {
+    const commandName = punishment.command_name ?? "";
+    const reason = punishment.reason ?? "";
+    const userId = punishment.user_id ?? "";
+    const moderatorId = punishment.moderator_id ?? "";
+    const lowerSearchTerm = searchTerm.toLowerCase();
+
+    return (
+      commandName.toLowerCase().includes(lowerSearchTerm) ||
+      userId.includes(searchTerm) ||
+      moderatorId.includes(searchTerm) ||
+      reason.toLowerCase().includes(lowerSearchTerm)
+    );
+  });
 
   if (loading) {
     return (
@@ -219,7 +224,7 @@ export function PunishmentsTable() {
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={getCommandColor(punishment.command_name)}
+                      className={getCommandColor(punishment.command_name ?? "")}
                     >
                       <Shield className="w-3 h-3 mr-1" />
                       {punishment.command_name}
@@ -255,10 +260,18 @@ export function PunishmentsTable() {
                       <Calendar className="w-4 h-4" />
                       <div>
                         <p className="text-sm">
-                          {new Date(punishment.issued_at).toLocaleDateString()}
+                          {punishment.issued_at
+                            ? new Date(
+                                punishment.issued_at
+                              ).toLocaleDateString()
+                            : "N/A"}
                         </p>
                         <p className="text-xs text-emerald-200/60">
-                          {new Date(punishment.issued_at).toLocaleTimeString()}
+                          {punishment.issued_at
+                            ? new Date(
+                                punishment.issued_at
+                              ).toLocaleTimeString()
+                            : ""}
                         </p>
                       </div>
                     </div>

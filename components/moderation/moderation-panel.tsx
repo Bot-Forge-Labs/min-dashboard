@@ -29,6 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
+import { Database } from "../../types/database.types";
+import { getGuildId } from '@/lib/getGuildId';
 import { toast } from "sonner";
 import {
   Ban,
@@ -41,6 +43,7 @@ import {
   Eye,
   History,
 } from "lucide-react";
+import { useRouter } from "next/router";
 
 interface User {
   id: string;
@@ -65,7 +68,9 @@ interface PunishmentForm {
   deleteMessages?: boolean;
 }
 
+
 export function ModerationPanel() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +88,7 @@ export function ModerationPanel() {
   useEffect(() => {
     fetchUsers();
   }, []);
+  
 
   const fetchUsers = async () => {
     try {
@@ -104,7 +110,23 @@ export function ModerationPanel() {
         return;
       }
 
-      setUsers(data || []);
+      setUsers(
+        (data || []).map((user) => ({
+          ...user,
+          avatar: user.avatar ?? "",
+          bot: user.bot ?? false,
+          discord_id: user.discord_id ?? "",
+          discriminator: user.discriminator ?? "",
+          email: user.email ?? "",
+          flags: user.flags ?? [],
+          is_admin: user.is_admin ?? false,
+          username: user.username ?? "",
+          joined_at: user.joined_at ?? "",
+          last_active: user.last_active ?? "",
+          message_count: user.message_count ?? 0,
+          // ensure all required fields on User type are handled
+        }))
+      );
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to connect to database");
@@ -136,18 +158,26 @@ export function ModerationPanel() {
         return;
       }
 
+
+      const guildId = getGuildId(router.query);
+      type PunishmentInsert = Database["public"]["Tables"]["punishments"]["Insert"];
+
       // Create punishment record
-      const punishmentData = {
-        user_id: selectedUser.id,
-        moderator_id: user.id,
-        command_name: punishmentForm.action,
-        reason: punishmentForm.reason,
+      const punishmentData: PunishmentInsert = {
+        user_id: selectedUser.id, // required
+        moderator_id: user.id, // required
+        guild_id: guildId, // **You MUST add guild_id here, it's required**
+
+        command_name: punishmentForm.action ?? null,
+        reason: punishmentForm.reason ?? null,
         expires_at: punishmentForm.duration
           ? new Date(
               Date.now() + parseDuration(punishmentForm.duration)
             ).toISOString()
           : null,
         active: ["mute", "timeout", "ban"].includes(punishmentForm.action),
+        // Optionally:
+        issued_at: new Date().toISOString(),
       };
 
       const { error: punishmentError } = await supabase
