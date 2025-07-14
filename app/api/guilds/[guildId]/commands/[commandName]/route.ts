@@ -3,14 +3,23 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest, { params }: { params: { guildId: string; commandName: string } }) {
   try {
+    const { guildId, commandName } = params
     const supabase = await createClient()
-    const { commandName } = params
 
-    const { data, error } = await supabase.from("commands").select("*").eq("name", commandName).single()
+    if (!guildId || !commandName) {
+      return NextResponse.json({ error: "Guild ID and command name are required" }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from("guild_commands")
+      .select("*")
+      .eq("guild_id", guildId)
+      .eq("command_name", commandName)
+      .single()
 
     if (error) {
       console.error("Error fetching command:", error)
-      return NextResponse.json({ error: "Command not found", details: error.message }, { status: 404 })
+      return NextResponse.json({ error: "Failed to fetch command", details: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data)
@@ -26,20 +35,22 @@ export async function GET(request: NextRequest, { params }: { params: { guildId:
 export async function PUT(request: NextRequest, { params }: { params: { guildId: string; commandName: string } }) {
   try {
     const body = await request.json()
+    const { guildId, commandName } = params
+    const { enabled } = body
     const supabase = await createClient()
-    const { commandName } = params
 
-    const { is_enabled, cooldown, permissions } = body
+    if (!guildId || !commandName) {
+      return NextResponse.json({ error: "Guild ID and command name are required" }, { status: 400 })
+    }
 
-    // Update specific command
     const { data, error } = await supabase
-      .from("commands")
-      .update({
-        is_enabled: is_enabled !== undefined ? is_enabled : true,
-        cooldown: cooldown || 0,
-        permissions: permissions || [],
+      .from("guild_commands")
+      .upsert({
+        guild_id: guildId,
+        command_name: commandName,
+        is_enabled: enabled !== false,
+        updated_at: new Date().toISOString(),
       })
-      .eq("name", commandName)
       .select()
       .single()
 

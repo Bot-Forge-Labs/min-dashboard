@@ -1,42 +1,36 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("bot_status")
       .select("*")
       .order("last_updated", { ascending: false })
       .limit(1)
-      .single();
+      .single()
 
     if (error) {
-      console.error("Error fetching bot status:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch bot status", details: error.message },
-        { status: 500 }
-      );
+      console.error("Error fetching bot status:", error)
+      return NextResponse.json({ error: "Failed to fetch bot status", details: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("Bot status fetch error:", error);
+    console.error("Bot status fetch error:", error)
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const supabase = await createClient();
+    const body = await request.json()
+    const supabase = await createClient()
 
     const {
       status,
@@ -49,16 +43,12 @@ export async function POST(request: NextRequest) {
       memory_usage,
       cpu_usage,
       version,
-    } = body;
+    } = body
 
     // First, try to get existing record
-    const { data: existing } = await supabase
-      .from("bot_status")
-      .select("id")
-      .limit(1)
-      .single();
+    const { data: existing } = await supabase.from("bot_status").select("id").limit(1).single()
 
-    let result;
+    let result
     if (existing) {
       // Update existing record
       result = await supabase
@@ -78,13 +68,13 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", existing.id)
         .select()
-        .single();
+        .single()
     } else {
       // Insert new record with explicit ID
       result = await supabase
         .from("bot_status")
         .insert({
-          id: "1",
+          id: 1,
           status: status || "online",
           activity_type: activity_type || "playing",
           activity_name: activity_name || "with Discord",
@@ -98,26 +88,20 @@ export async function POST(request: NextRequest) {
           last_updated: new Date().toISOString(),
         })
         .select()
-        .single();
+        .single()
     }
 
     if (result.error) {
-      console.error("Error updating bot status:", result.error);
-      return NextResponse.json(
-        { error: "Failed to update bot status", details: result.error.message },
-        { status: 500 }
-      );
+      console.error("Error updating bot status:", result.error)
+      return NextResponse.json({ error: "Failed to update bot status", details: result.error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, data: result.data });
+    return NextResponse.json({ success: true, data: result.data })
   } catch (error) {
-    console.error("Bot status update error:", error);
+    console.error("Bot status update error:", error)
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }

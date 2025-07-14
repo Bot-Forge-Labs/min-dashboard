@@ -3,15 +3,26 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
-    const guild_id = searchParams.get("guild_id")
+    const guildId = searchParams.get("guild_id")
+    const userId = searchParams.get("user_id")
+    const action = searchParams.get("action")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
 
-    let query = supabase.from("mod_logs").select("*").order("created_at", { ascending: false }).limit(limit)
+    const supabase = await createClient()
 
-    if (guild_id) {
-      query = query.eq("guild_id", guild_id)
+    let query = supabase.from("mod_logs").select("*").order("timestamp", { ascending: false }).limit(limit)
+
+    if (guildId) {
+      query = query.eq("guild_id", guildId)
+    }
+
+    if (userId) {
+      query = query.eq("user_id", userId)
+    }
+
+    if (action) {
+      query = query.eq("action", action)
     }
 
     const { data, error } = await query
@@ -36,13 +47,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = await createClient()
 
-    const { guild_id, user_id, moderator_id, action, reason, duration, channel_id, message_id } = body
+    const { guild_id, user_id, moderator_id, action, reason, details, expires_at, case_id } = body
 
     if (!guild_id || !user_id || !moderator_id || !action) {
-      return NextResponse.json({ error: "guild_id, user_id, moderator_id, and action are required" }, { status: 400 })
+      return NextResponse.json({ error: "Guild ID, User ID, Moderator ID, and Action are required" }, { status: 400 })
     }
 
-    // Create mod log entry
     const { data, error } = await supabase
       .from("mod_logs")
       .insert({
@@ -50,11 +60,11 @@ export async function POST(request: NextRequest) {
         user_id,
         moderator_id,
         action,
-        reason: reason || null,
-        duration: duration || null,
-        channel_id: channel_id || null,
-        message_id: message_id || null,
-        created_at: new Date().toISOString(),
+        reason: reason || "No reason provided",
+        details: details || {},
+        expires_at,
+        case_id,
+        timestamp: new Date().toISOString(),
       })
       .select()
       .single()

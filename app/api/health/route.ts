@@ -6,25 +6,23 @@ export async function GET() {
     const supabase = await createClient()
 
     // Test database connection
-    const { data, error } = await supabase.from("bot_status").select("status").limit(1).single()
+    const { data, error } = await supabase.from("guilds").select("count").limit(1).single()
 
     if (error) {
-      console.error("Health check failed:", error)
+      console.error("Database health check failed:", error)
       return NextResponse.json(
         {
           status: "unhealthy",
           database: "disconnected",
           error: error.message,
-          timestamp: new Date().toISOString(),
         },
-        { status: 503 },
+        { status: 500 },
       )
     }
 
     return NextResponse.json({
       status: "healthy",
       database: "connected",
-      bot_status: data?.status || "unknown",
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
@@ -32,8 +30,7 @@ export async function GET() {
     return NextResponse.json(
       {
         status: "unhealthy",
-        error: error instanceof Error ? error.message : "Internal server error",
-        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )

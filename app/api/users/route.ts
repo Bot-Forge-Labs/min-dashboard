@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const supabase = await createClient()
 
-    const { data, error } = await supabase.from("users").select("*").order("updated_at", { ascending: false })
+    const { data, error } = await supabase.from("users").select("*").order("username")
 
     if (error) {
       console.error("Error fetching users:", error)
@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = await createClient()
 
-    const { user_id, username, discriminator, avatar, bot, system } = body
+    const { id, username, discriminator, avatar_url, bot, system, flags, premium_type, public_flags } = body
 
-    if (!user_id || !username) {
+    if (!id || !username) {
       return NextResponse.json({ error: "User ID and username are required" }, { status: 400 })
     }
 
@@ -37,12 +37,11 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("users")
       .upsert({
-        user_id,
+        id,
         username,
-        discriminator: discriminator || "0",
-        avatar,
+        discriminator,
+        avatar: avatar_url,
         bot: bot || false,
-        system: system || false,
         updated_at: new Date().toISOString(),
       })
       .select()

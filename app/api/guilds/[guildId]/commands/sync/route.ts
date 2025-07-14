@@ -4,64 +4,38 @@ import { createClient } from "@/lib/supabase/server"
 export async function POST(request: NextRequest, { params }: { params: { guildId: string } }) {
   try {
     const body = await request.json()
-    const supabase = await createClient()
     const { guildId } = params
-
     const { commands } = body
+    const supabase = await createClient()
+
+    if (!guildId) {
+      return NextResponse.json({ error: "Guild ID is required" }, { status: 400 })
+    }
 
     if (!commands || !Array.isArray(commands)) {
       return NextResponse.json({ error: "Commands array is required" }, { status: 400 })
     }
 
-    // Sync commands to database
-    const results = []
-    for (const command of commands) {
-      const { data, error } = await supabase
-        .from("commands")
-        .upsert({
-          name: command.name,
-          type: command.type || "command",
-          description: command.description,
-          category: command.category,
-          usage_count: command.usage_count || 0,
-          last_used: command.last_used,
-          is_enabled: command.is_enabled !== false, // Default to true
-          cooldown: command.cooldown || 0,
-          permissions: command.permissions || [],
-          added_at: command.added_at || new Date().toISOString(),
-        })
-        .select()
-        .single()
+    // Sync commands to guild_commands table
+    const commandsToUpsert = commands.map((cmd: any) => ({
+      guild_id: guildId,
+      command_name: cmd.name,
+      is_enabled: cmd.enabled !== false,
+      usage_count: cmd.usage_count || 0,
+      updated_at: new Date().toISOString(),
+    }))
 
-      if (error) {
-        console.error(`Error syncing command ${command.name}:`, error)
-        results.push({ command: command.name, success: false, error: error.message })
-      } else {
-        results.push({ command: command.name, success: true, data })
-      }
+    const { data, error } = await supabase
+      .from("guild_commands")
+      .upsert(commandsToUpsert, { onConflict: "guild_id,command_name" })
+      .select()
+
+    if (error) {
+      console.error("Error syncing commands:", error)
+      return NextResponse.json({ error: "Failed to sync commands", details: error.message }, { status: 500 })
     }
 
-    // Update guild commands table if it exists
-    try {
-      await supabase.from("guild_commands").upsert({
-        guild_id: guildId,
-        commands_synced: commands.length,
-        last_sync: new Date().toISOString(),
-      })
-    } catch (guildCommandError) {
-      // Guild commands table might not exist, that's okay
-      console.log("Guild commands table not found, skipping...")
-    }
-
-    const successCount = results.filter((r) => r.success).length
-    const failureCount = results.filter((r) => !r.success).length
-
-    return NextResponse.json({
-      success: true,
-      synced: successCount,
-      failed: failureCount,
-      results,
-    })
+    return NextResponse.json({ success: true, synced: data.length, commands: data })
   } catch (error) {
     console.error("Command sync error:", error)
     return NextResponse.json(

@@ -3,20 +3,31 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
-    const event_type = searchParams.get("event_type")
-    const guild_id = searchParams.get("guild_id")
+    const guildId = searchParams.get("guild_id")
+    const eventType = searchParams.get("event_type")
+    const startDate = searchParams.get("start_date")
+    const endDate = searchParams.get("end_date")
     const limit = Number.parseInt(searchParams.get("limit") || "100")
 
-    let query = supabase.from("analytics_events").select("*").order("created_at", { ascending: false }).limit(limit)
+    const supabase = await createClient()
 
-    if (event_type) {
-      query = query.eq("event_type", event_type)
+    let query = supabase.from("analytics_events").select("*").order("timestamp", { ascending: false }).limit(limit)
+
+    if (guildId) {
+      query = query.eq("guild_id", guildId)
     }
 
-    if (guild_id) {
-      query = query.eq("guild_id", guild_id)
+    if (eventType) {
+      query = query.eq("event_type", eventType)
+    }
+
+    if (startDate) {
+      query = query.gte("timestamp", startDate)
+    }
+
+    if (endDate) {
+      query = query.lte("timestamp", endDate)
     }
 
     const { data, error } = await query
@@ -41,23 +52,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = await createClient()
 
-    const { event_type, guild_id, user_id, command_name, channel_id, metadata } = body
+    const { guild_id, event_type, event_data, user_id, timestamp } = body
 
-    if (!event_type) {
-      return NextResponse.json({ error: "event_type is required" }, { status: 400 })
+    if (!guild_id || !event_type) {
+      return NextResponse.json({ error: "Guild ID and Event Type are required" }, { status: 400 })
     }
 
-    // Create analytics event
     const { data, error } = await supabase
       .from("analytics_events")
       .insert({
+        guild_id,
         event_type,
-        guild_id: guild_id || null,
-        user_id: user_id || null,
-        command_name: command_name || null,
-        channel_id: channel_id || null,
-        metadata: metadata || {},
-        created_at: new Date().toISOString(),
+        event_data: event_data || {},
+        user_id,
+        timestamp: timestamp || new Date().toISOString(),
       })
       .select()
       .single()
