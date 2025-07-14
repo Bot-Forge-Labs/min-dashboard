@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
       role_id: role.id,
       guild_id: guildId,
       name: role.name,
-      color: role.color.toString(16).padStart(6, "0"), // Convert to hex string
+      color: role.color, 
       position: role.position,
-      permissions: role.permissions,
+      permissions: Number(role.permissions),
       hoist: role.hoist,
       mentionable: role.mentionable,
       managed: role.managed,
