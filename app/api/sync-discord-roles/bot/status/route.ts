@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("bot_status")
       .upsert({
-        id: 1, // Single row for bot status
+        id: "1", // Single row for bot status
         status: status || "online",
         activity_type: activity_type || "playing",
         activity_name: activity_name || "with Discord",
