@@ -20,11 +20,14 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
 
       // Insert new roles
       if (roles.length > 0) {
+        const assignedBy = "system" // or fetch admin user ID or bot user ID if available
+
         const roleInserts = roles.map((roleId) => ({
           user_id: userId,
           guild_id: guildId,
-          role_id: roleId,
+          role_id: String(roleId),
           assigned_at: new Date().toISOString(),
+          assigned_by: assignedBy,
         }))
 
         const { error: rolesError } = await supabase.from("user_roles").insert(roleInserts)
