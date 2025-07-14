@@ -1,13 +1,26 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -16,22 +29,36 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Search, Eye, Edit, Trash2, Loader2, RefreshCw, Users, Plus } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { Giveaway, Guild } from "@/types/database"
-import { toast } from "sonner"
+} from "@/components/ui/dialog";
+import {
+  Search,
+  Eye,
+  Edit,
+  Trash2,
+  Loader2,
+  RefreshCw,
+  Users,
+  Plus,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { Giveaway, Guild } from "@/types/database";
+import { toast } from "sonner";
 
 export function GiveawaysTable() {
-  const [giveaways, setGiveaways] = useState<Giveaway[]>([])
-  const [guilds, setGuilds] = useState<Guild[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
+  const [guilds, setGuilds] = useState<Guild[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newGiveaway, setNewGiveaway] = useState({
     prize: "",
     description: "",
@@ -39,67 +66,73 @@ export function GiveawaysTable() {
     duration_minutes: 60,
     guild_id: "",
     channel_id: "",
-  })
+  });
 
   const fetchData = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const [giveawaysResult, guildsResult] = await Promise.all([
-        supabase.from("giveaways").select("*").order("created_at", { ascending: false }),
-        supabase.from("guilds").select("*").order("created_at", { ascending: false }),
-      ])
+        supabase
+          .from("giveaways")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("guilds")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      ]);
 
       if (giveawaysResult.error) {
-        console.error("Error fetching giveaways:", giveawaysResult.error)
-        toast.error("Failed to fetch giveaways")
-        return
+        console.error("Error fetching giveaways:", giveawaysResult.error);
+        toast.error("Failed to fetch giveaways");
+        return;
       }
 
       if (guildsResult.error) {
-        console.error("Error fetching guilds:", guildsResult.error)
-        toast.error("Failed to fetch guilds")
-        return
+        console.error("Error fetching guilds:", guildsResult.error);
+        toast.error("Failed to fetch guilds");
+        return;
       }
 
-      setGiveaways(giveawaysResult.data || [])
-      setGuilds(guildsResult.data || [])
+      setGiveaways(giveawaysResult.data || []);
+      setGuilds(guildsResult.data || []);
 
       if (giveawaysResult.data && giveawaysResult.data.length > 0) {
-        toast.success(`Loaded ${giveawaysResult.data.length} giveaways`)
+        toast.success(`Loaded ${giveawaysResult.data.length} giveaways`);
       }
     } catch (error) {
-      console.error("Error fetching giveaways:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching giveaways:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchData()
-  }
+    setRefreshing(true);
+    fetchData();
+  };
 
   const handleCreateGiveaway = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const endTime = new Date()
-      endTime.setMinutes(endTime.getMinutes() + newGiveaway.duration_minutes)
+      const endTime = new Date();
+      endTime.setMinutes(endTime.getMinutes() + newGiveaway.duration_minutes);
 
       const { error } = await supabase.from("giveaways").insert({
         prize: newGiveaway.prize,
@@ -111,16 +144,16 @@ export function GiveawaysTable() {
         channel_id: newGiveaway.channel_id,
         created_by: "dashboard_user", // You might want to get this from auth
         ended: false,
-      })
+      });
 
       if (error) {
-        console.error("Error creating giveaway:", error)
-        toast.error(`Failed to create giveaway: ${error.message}`)
-        return
+        console.error("Error creating giveaway:", error);
+        toast.error(`Failed to create giveaway: ${error.message}`);
+        return;
       }
 
-      toast.success("Giveaway created successfully")
-      setIsCreateDialogOpen(false)
+      toast.success("Giveaway created successfully");
+      setIsCreateDialogOpen(false);
       setNewGiveaway({
         prize: "",
         description: "",
@@ -128,80 +161,89 @@ export function GiveawaysTable() {
         duration_minutes: 60,
         guild_id: "",
         channel_id: "",
-      })
-      fetchData()
+      });
+      fetchData();
     } catch (error) {
-      console.error("Error creating giveaway:", error)
-      toast.error("Failed to create giveaway")
+      console.error("Error creating giveaway:", error);
+      toast.error("Failed to create giveaway");
     }
-  }
+  };
 
   const handleDeleteGiveaway = async (giveawayId: number) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const { error } = await supabase.from("giveaways").delete().eq("id", giveawayId)
+      const { error } = await supabase
+        .from("giveaways")
+        .delete()
+        .eq("id", giveawayId);
 
       if (error) {
-        console.error("Error deleting giveaway:", error)
-        toast.error("Failed to delete giveaway")
-        return
+        console.error("Error deleting giveaway:", error);
+        toast.error("Failed to delete giveaway");
+        return;
       }
 
-      toast.success("Giveaway deleted successfully")
-      fetchData() // Refresh the list
+      toast.success("Giveaway deleted successfully");
+      fetchData(); // Refresh the list
     } catch (error) {
-      console.error("Error deleting giveaway:", error)
-      toast.error("Failed to delete giveaway")
+      console.error("Error deleting giveaway:", error);
+      toast.error("Failed to delete giveaway");
     }
-  }
+  };
 
   const handleEndGiveaway = async (giveawayId: number) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const { error } = await supabase.from("giveaways").update({ ended: true }).eq("id", giveawayId)
+      const { error } = await supabase
+        .from("giveaways")
+        .update({ ended: true })
+        .eq("id", giveawayId);
 
       if (error) {
-        console.error("Error ending giveaway:", error)
-        toast.error("Failed to end giveaway")
-        return
+        console.error("Error ending giveaway:", error);
+        toast.error("Failed to end giveaway");
+        return;
       }
 
-      toast.success("Giveaway ended successfully")
-      fetchData() // Refresh the list
+      toast.success("Giveaway ended successfully");
+      fetchData(); // Refresh the list
     } catch (error) {
-      console.error("Error ending giveaway:", error)
-      toast.error("Failed to end giveaway")
+      console.error("Error ending giveaway:", error);
+      toast.error("Failed to end giveaway");
     }
-  }
+  };
 
   const filteredGiveaways = giveaways.filter(
     (giveaway) =>
       giveaway.prize.toLowerCase().includes(searchTerm.toLowerCase()) ||
       giveaway.created_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      giveaway.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      (giveaway.description ?? "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+  );
 
   const getStatusColor = (ended: boolean, endTime: string) => {
-    if (ended) return "bg-red-500/10 text-red-400 border-red-500/20"
-    if (new Date(endTime) < new Date()) return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-    return "bg-green-500/10 text-green-400 border-green-500/20"
-  }
+    if (ended) return "bg-red-500/10 text-red-400 border-red-500/20";
+    if (new Date(endTime) < new Date())
+      return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+    return "bg-green-500/10 text-green-400 border-green-500/20";
+  };
 
   const getStatus = (ended: boolean, endTime: string) => {
-    if (ended) return "Ended"
-    if (new Date(endTime) < new Date()) return "Expired"
-    return "Active"
-  }
+    if (ended) return "Ended";
+    if (new Date(endTime) < new Date()) return "Expired";
+    return "Active";
+  };
 
   if (loading) {
     return (
@@ -213,7 +255,7 @@ export function GiveawaysTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -222,7 +264,9 @@ export function GiveawaysTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Giveaways</CardTitle>
-            <CardDescription className="text-emerald-200/80">Manage server giveaways and track winners</CardDescription>
+            <CardDescription className="text-emerald-200/80">
+              Manage server giveaways and track winners
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -232,10 +276,15 @@ export function GiveawaysTable() {
               disabled={refreshing}
               className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+              />
               Refresh
             </Button>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            >
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
                   <Plus className="w-4 h-4 mr-2" />
@@ -244,7 +293,9 @@ export function GiveawaysTable() {
               </DialogTrigger>
               <DialogContent className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Create New Giveaway</DialogTitle>
+                  <DialogTitle className="text-white">
+                    Create New Giveaway
+                  </DialogTitle>
                   <DialogDescription className="text-emerald-200/80">
                     Create a new giveaway for your server members.
                   </DialogDescription>
@@ -257,12 +308,21 @@ export function GiveawaysTable() {
                     <select
                       id="guildSelect"
                       value={newGiveaway.guild_id}
-                      onChange={(e) => setNewGiveaway({ ...newGiveaway, guild_id: e.target.value })}
+                      onChange={(e) =>
+                        setNewGiveaway({
+                          ...newGiveaway,
+                          guild_id: e.target.value,
+                        })
+                      }
                       className="w-full mt-1 p-2 bg-white/5 border border-emerald-400/20 rounded-md text-white"
                     >
                       <option value="">Select a guild</option>
                       {guilds.map((guild) => (
-                        <option key={guild.guild_id} value={guild.guild_id} className="bg-gray-800">
+                        <option
+                          key={guild.guild_id}
+                          value={guild.guild_id}
+                          className="bg-gray-800"
+                        >
                           {guild.name}
                         </option>
                       ))}
@@ -275,7 +335,12 @@ export function GiveawaysTable() {
                     <Input
                       id="prize"
                       value={newGiveaway.prize}
-                      onChange={(e) => setNewGiveaway({ ...newGiveaway, prize: e.target.value })}
+                      onChange={(e) =>
+                        setNewGiveaway({
+                          ...newGiveaway,
+                          prize: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter prize name"
                     />
@@ -287,14 +352,22 @@ export function GiveawaysTable() {
                     <Textarea
                       id="description"
                       value={newGiveaway.description}
-                      onChange={(e) => setNewGiveaway({ ...newGiveaway, description: e.target.value })}
+                      onChange={(e) =>
+                        setNewGiveaway({
+                          ...newGiveaway,
+                          description: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter giveaway description"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="winnersCount" className="text-emerald-200">
+                      <Label
+                        htmlFor="winnersCount"
+                        className="text-emerald-200"
+                      >
                         Winners Count
                       </Label>
                       <Input
@@ -303,7 +376,10 @@ export function GiveawaysTable() {
                         min="1"
                         value={newGiveaway.winners_count}
                         onChange={(e) =>
-                          setNewGiveaway({ ...newGiveaway, winners_count: Number.parseInt(e.target.value) || 1 })
+                          setNewGiveaway({
+                            ...newGiveaway,
+                            winners_count: Number.parseInt(e.target.value) || 1,
+                          })
                         }
                         className="bg-white/5 border-emerald-400/20 text-white"
                       />
@@ -318,7 +394,11 @@ export function GiveawaysTable() {
                         min="1"
                         value={newGiveaway.duration_minutes}
                         onChange={(e) =>
-                          setNewGiveaway({ ...newGiveaway, duration_minutes: Number.parseInt(e.target.value) || 60 })
+                          setNewGiveaway({
+                            ...newGiveaway,
+                            duration_minutes:
+                              Number.parseInt(e.target.value) || 60,
+                          })
                         }
                         className="bg-white/5 border-emerald-400/20 text-white"
                       />
@@ -331,7 +411,12 @@ export function GiveawaysTable() {
                     <Input
                       id="channelId"
                       value={newGiveaway.channel_id}
-                      onChange={(e) => setNewGiveaway({ ...newGiveaway, channel_id: e.target.value })}
+                      onChange={(e) =>
+                        setNewGiveaway({
+                          ...newGiveaway,
+                          channel_id: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter channel ID"
                     />
@@ -347,7 +432,11 @@ export function GiveawaysTable() {
                   </Button>
                   <Button
                     onClick={handleCreateGiveaway}
-                    disabled={!newGiveaway.prize || !newGiveaway.guild_id || !newGiveaway.channel_id}
+                    disabled={
+                      !newGiveaway.prize ||
+                      !newGiveaway.guild_id ||
+                      !newGiveaway.channel_id
+                    }
                     className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
                   >
                     Create Giveaway
@@ -373,10 +462,14 @@ export function GiveawaysTable() {
         {filteredGiveaways.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No giveaways found matching your search." : "No giveaways found."}
+              {searchTerm
+                ? "No giveaways found matching your search."
+                : "No giveaways found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Giveaways will appear here when they are created.</p>
+              <p className="text-sm text-emerald-300/40">
+                Giveaways will appear here when they are created.
+              </p>
             )}
           </div>
         ) : (
@@ -389,34 +482,57 @@ export function GiveawaysTable() {
                 <TableHead className="text-emerald-200">Duration</TableHead>
                 <TableHead className="text-emerald-200">End Time</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredGiveaways.map((giveaway) => (
-                <TableRow key={giveaway.id} className="border-emerald-400/20 hover:bg-white/5">
+                <TableRow
+                  key={giveaway.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
                   <TableCell>
                     <div>
-                      <div className="font-medium text-white">{giveaway.prize}</div>
-                      <div className="text-sm text-emerald-300/60 max-w-xs truncate">{giveaway.description}</div>
+                      <div className="font-medium text-white">
+                        {giveaway.prize}
+                      </div>
+                      <div className="text-sm text-emerald-300/60 max-w-xs truncate">
+                        {giveaway.description}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-200">{giveaway.winners_count}</span>
+                      <span className="text-emerald-200">
+                        {giveaway.winners_count}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{giveaway.created_by}</TableCell>
-                  <TableCell className="text-emerald-200/80">
-                    {giveaway.duration_minutes ? `${giveaway.duration_minutes} min` : "N/A"}
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {giveaway.created_by}
                   </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(giveaway.end_time), { addSuffix: true })}
+                    {giveaway.duration_minutes
+                      ? `${giveaway.duration_minutes} min`
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80">
+                    {formatDistanceToNow(new Date(giveaway.end_time), {
+                      addSuffix: true,
+                    })}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getStatusColor(giveaway.ended, giveaway.end_time)}>
-                      {getStatus(giveaway.ended, giveaway.end_time)}
+                    <Badge
+                      variant="outline"
+                      className={getStatusColor(
+                        giveaway.ended ?? false,
+                        giveaway.end_time
+                      )}
+                    >
+                      {getStatus(giveaway.ended ?? false, giveaway.end_time)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -430,20 +546,24 @@ export function GiveawaysTable() {
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-white/10 backdrop-blur-xl border-emerald-400/20"
+                      >
                         <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        {!giveaway.ended && new Date(giveaway.end_time) > new Date() && (
-                          <DropdownMenuItem
-                            className="text-yellow-400 hover:bg-yellow-500/10"
-                            onClick={() => handleEndGiveaway(giveaway.id)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            End Early
-                          </DropdownMenuItem>
-                        )}
+                        {!giveaway.ended &&
+                          new Date(giveaway.end_time) > new Date() && (
+                            <DropdownMenuItem
+                              className="text-yellow-400 hover:bg-yellow-500/10"
+                              onClick={() => handleEndGiveaway(giveaway.id)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              End Early
+                            </DropdownMenuItem>
+                          )}
                         <DropdownMenuItem
                           className="text-red-400 hover:bg-red-500/10"
                           onClick={() => handleDeleteGiveaway(giveaway.id)}
@@ -461,5 +581,5 @@ export function GiveawaysTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
