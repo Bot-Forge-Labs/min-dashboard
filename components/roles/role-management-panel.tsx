@@ -57,7 +57,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
 
       console.log("Syncing roles for guild:", guildId);
 
-      const response = await fetch("/sync-discord-roles", {
+      const response = await fetch("https://min-bot.api.sogki.dev/api/sync-discord-roles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
