@@ -57,7 +57,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
 
       console.log("Syncing roles for guild:", guildId);
 
-      const response = await fetch("/api/sync-discord-roles", {
+      const response = await fetch("/sync-discord-roles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
