@@ -2,6 +2,7 @@ import type { Database } from "../types/database.types";
 import { createClient } from "./supabase/client";
 
 
+
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

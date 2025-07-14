@@ -7,9 +7,10 @@ import type {
   Giveaway,
   Announcement,
   ReactionRole,
-  DashboardStats,
   User,
 } from "@/types/database";
+
+import { DashboardStats } from "@/types";
 
 // Check if Supabase is configured
 function isSupabaseConfigured(): boolean {
@@ -39,7 +40,7 @@ export async function getGuilds(): Promise<Guild[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -66,7 +67,7 @@ export async function getCommands(): Promise<Command[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -83,31 +84,57 @@ export async function getModLogs(limit = 50): Promise<ModLog[]> {
     const supabase = await createClient();
     if (!supabase) return [];
 
-    // Try the view first, fallback to regular table if view doesn't exist
-    let { data, error } = await supabase
+    // Attempt to query the view
+    const { data: viewData, error: viewError } = await supabase
       .from("mod_logs_with_usernames")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    // If view doesn't exist, try the regular table
-    if (error && error.message.includes("does not exist")) {
-      const result = await supabase
+    if (viewError && viewError.message.includes("does not exist")) {
+      // Fallback to mod_logs table
+      const { data: tableData, error: tableError } = await supabase
         .from("mod_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(limit);
 
-      data = result.data;
-      error = result.error;
+      if (tableError) {
+        console.error("Error fetching mod logs fallback:", tableError);
+        return [];
+      }
+
+      // Explicitly map to ModLog to ensure type safety
+      return (tableData ?? []).map((item: any) => ({
+        id: item.id,
+        guild_id: item.guild_id,
+        user_id: item.user_id,
+        user_username: item.user_username ?? undefined,
+        moderator_id: item.moderator_id,
+        moderator_username: item.moderator_username ?? undefined,
+        action: item.action,
+        details: item.details ?? {},
+        created_at: item.created_at,
+      }));
     }
 
-    if (error) {
-      console.error("Error fetching mod logs:", error);
+    if (viewError) {
+      console.error("Error fetching mod logs:", viewError);
       return [];
     }
 
-    return data || [];
+    // Map viewData to ModLog interface
+    return (viewData ?? []).map((item: any) => ({
+      id: item.id,
+      guild_id: item.guild_id,
+      user_id: item.user_id,
+      user_username: item.user_username ?? undefined,
+      moderator_id: item.moderator_id,
+      moderator_username: item.moderator_username ?? undefined,
+      action: item.action,
+      details: item.details ?? {},
+      created_at: item.created_at,
+    }));
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -134,7 +161,7 @@ export async function getPunishments(): Promise<Punishment[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -161,7 +188,7 @@ export async function getGiveaways(): Promise<Giveaway[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -188,7 +215,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -215,7 +242,7 @@ export async function getReactionRoles(): Promise<ReactionRole[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -243,7 +270,7 @@ export async function getUsers(limit = 100): Promise<User[]> {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
@@ -251,7 +278,7 @@ export async function getUsers(limit = 100): Promise<User[]> {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const defaultStats = {
+  const defaultStats: DashboardStats = {
     total_servers: 0,
     total_users: 0,
     bot_uptime: 0,
@@ -270,10 +297,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const supabase = await createClient();
     if (!supabase) return defaultStats;
 
-    // Get total servers - check both guilds and guild_settings tables
     let serverCount = 0;
 
-    // Try guilds table first
     const { count: guildCount } = await supabase
       .from("guilds")
       .select("*", { count: "exact", head: true });
@@ -281,32 +306,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     if (guildCount && guildCount > 0) {
       serverCount = guildCount;
     } else {
-      // Fallback to guild_settings table
       const { count: guildSettingsCount } = await supabase
         .from("guild_settings")
         .select("*", { count: "exact", head: true });
-      serverCount = guildSettingsCount || 0;
+      serverCount = guildSettingsCount ?? 0;
     }
 
-    // Get total users
     const { count: userCount } = await supabase
       .from("users")
       .select("*", { count: "exact", head: true });
 
-    // Get total commands usage
     const { data: commandsData } = await supabase
       .from("commands")
       .select("usage_count");
-    const totalCommandUsage =
-      commandsData?.reduce((sum, cmd) => sum + cmd.usage_count, 0) || 0;
 
-    // Get active giveaways
+    const totalCommandUsage =
+      commandsData?.reduce((sum, cmd) => sum + (cmd.usage_count ?? 0), 0) ?? 0;
+
     const { count: activeGiveaways } = await supabase
       .from("giveaways")
       .select("*", { count: "exact", head: true })
       .eq("ended", false);
 
-    // Get mod actions this week
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -315,7 +336,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select("*", { count: "exact", head: true })
       .gte("created_at", weekAgo.toISOString());
 
-    // Get announcements this month
     const monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
@@ -326,12 +346,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     return {
       total_servers: serverCount,
-      total_users: userCount || 0,
-      bot_uptime: 99.9, // This would come from your bot's actual uptime
-      commands_per_day: Math.floor(totalCommandUsage / 30), // Rough estimate
-      active_giveaways: activeGiveaways || 0,
-      mod_actions_week: modActionsWeek || 0,
-      announcements_month: announcementsMonth || 0,
+      total_users: userCount ?? 0,
+      bot_uptime: 99.9, // Replace with your actual uptime source
+      commands_per_day: Math.floor(totalCommandUsage / 30),
+      active_giveaways: activeGiveaways ?? 0,
+      mod_actions_week: modActionsWeek ?? 0,
+      announcements_month: announcementsMonth ?? 0,
     };
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
@@ -339,7 +359,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }
 }
 
-export async function getRecentActivity(limit = 10) {
+export async function getRecentActivity(limit = 10): Promise<ModLog[]> {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured, returning empty array");
     return [];
@@ -349,38 +369,64 @@ export async function getRecentActivity(limit = 10) {
     const supabase = await createClient();
     if (!supabase) return [];
 
-    // Try the view first, fallback to regular table if view doesn't exist
-    let { data, error } = await supabase
+    // Attempt to query the view
+    const { data: viewData, error: viewError } = await supabase
       .from("mod_logs_with_usernames")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    // If view doesn't exist, try the regular table
-    if (error && error.message.includes("does not exist")) {
-      const result = await supabase
+    if (viewError && viewError.message.includes("does not exist")) {
+      // Fallback to mod_logs table
+      const { data: tableData, error: tableError } = await supabase
         .from("mod_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(limit);
 
-      data = result.data;
-      error = result.error;
+      if (tableError) {
+        console.error("Error fetching recent activity fallback:", tableError);
+        return [];
+      }
+
+      // Explicitly map to ModLog to ensure type safety
+      return (tableData ?? []).map((item: any) => ({
+        id: item.id,
+        guild_id: item.guild_id,
+        user_id: item.user_id,
+        user_username: item.user_username ?? undefined,
+        moderator_id: item.moderator_id,
+        moderator_username: item.moderator_username ?? undefined,
+        action: item.action,
+        details: item.details ?? {},
+        created_at: item.created_at,
+      }));
     }
 
-    if (error) {
-      console.error("Error fetching recent activity:", error);
+    if (viewError) {
+      console.error("Error fetching recent activity:", viewError);
       return [];
     }
 
-    return data || [];
+    // Map viewData to ModLog interface
+    return (viewData ?? []).map((item: any) => ({
+      id: item.id,
+      guild_id: item.guild_id,
+      user_id: item.user_id,
+      user_username: item.user_username ?? undefined,
+      moderator_id: item.moderator_id,
+      moderator_username: item.moderator_username ?? undefined,
+      action: item.action,
+      details: item.details ?? {},
+      created_at: item.created_at,
+    }));
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
   }
 }
 
-export async function getServerOverview() {
+export async function getServerOverview(): Promise<{ guild_id: string; name: string }[]> {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured, returning empty array");
     return [];
@@ -401,7 +447,7 @@ export async function getServerOverview() {
       return [];
     }
 
-    return data || [];
+    return data ?? [];
   } catch (error) {
     console.error("Error creating Supabase client:", error);
     return [];
