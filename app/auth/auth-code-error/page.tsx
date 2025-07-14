@@ -8,14 +8,14 @@ export default function AuthCodeErrorPage() {
     <div className="min-h-screen relative overflow-hidden">
       {/* Animated Background */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-900 to-green-900 animate-gradient-slow"
+        className="absolute inset-0 bg-linear-to-br from-slate-900 via-emerald-900 to-green-900 animate-gradient-slow"
         style={{ backgroundSize: "400% 400%" }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/5 via-green-400/5 to-teal-400/5"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-emerald-400/5 via-green-400/5 to-teal-400/5"></div>
       </div>
 
       {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.03)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.03)_1px,transparent_1px)] bg-size-[50px_50px]"></div>
 
       {/* Main Content */}
       <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
@@ -43,7 +43,7 @@ export default function AuthCodeErrorPage() {
 
             <Button
               asChild
-              className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+              className="w-full bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
             >
               <Link href="/">
                 <ArrowLeft className="w-4 h-4 mr-2" />

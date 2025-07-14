@@ -1,13 +1,29 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Search,
   ChevronDown,
@@ -24,10 +40,10 @@ import {
   Shield,
   GamepadIcon,
   Wrench,
-} from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { Command as CommandType } from "@/lib/types/database"
-import { toast } from "sonner"
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { Command as CommandType } from "@/types/database";
+import { toast } from "sonner";
 
 interface CommandWithSubcommands extends CommandType {
   subcommands?: Array<{
@@ -35,36 +51,41 @@ interface CommandWithSubcommands extends CommandType {
     description: string
     usage_count: number
     is_enabled: boolean
-  }>
+  }
 }
 
 export function CommandsTable() {
-  const [commands, setCommands] = useState<CommandWithSubcommands[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [refreshing, setRefreshing] = useState(false)
-  const [expandedCommands, setExpandedCommands] = useState<Set<string>>(new Set())
+  const [commands, setCommands] = useState<CommandWithSubcommands[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedCommands, setExpandedCommands] = useState<Set<string>>(
+    new Set()
+  );
 
   useEffect(() => {
-    fetchCommands()
-  }, [])
+    fetchCommands();
+  }, []);
 
   const fetchCommands = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Database connection failed")
-        return
+        toast.error("Database connection failed");
+        return;
       }
 
-      const { data, error } = await supabase.from("commands").select("*").order("usage_count", { ascending: false })
+      const { data, error } = await supabase
+        .from("commands")
+        .select("*")
+        .order("usage_count", { ascending: false });
 
       if (error) {
-        console.error("Error fetching commands:", error)
-        toast.error("Failed to fetch commands")
-        return
+        console.error("Error fetching commands:", error);
+        toast.error("Failed to fetch commands");
+        return;
       }
 
       // Group commands with their subcommands
@@ -91,58 +112,58 @@ export function CommandsTable() {
         return acc
       }, [])
 
-      setCommands(commandsWithSubs)
+      setCommands(commandsWithSubs);
       if (commandsWithSubs.length > 0) {
-        toast.success(`Loaded ${commandsWithSubs.length} commands`)
+        toast.success(`Loaded ${commandsWithSubs.length} commands`);
       }
     } catch (error) {
-      console.error("Error fetching commands:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching commands:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchCommands()
-  }
+    setRefreshing(true);
+    fetchCommands();
+  };
 
   const toggleCommand = async (commandName: string, is_enabled: boolean) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Database connection failed")
-        return
+        toast.error("Database connection failed");
+        return;
       }
 
       const { error } = await supabase.from("commands").update({ is_enabled }).eq("name", commandName)
 
       if (error) {
-        console.error("Error updating command:", error)
-        toast.error("Failed to update command")
-        return
+        console.error("Error updating command:", error);
+        toast.error("Failed to update command");
+        return;
       }
 
-      // Update local state
       setCommands((prev) => prev.map((cmd) => (cmd.name === commandName ? { ...cmd, is_enabled } : cmd)))
 
       toast.success(`${commandName} ${is_enabled ? "is_enabled" : "disabled"}`)
     } catch (error) {
-      console.error("Error updating command:", error)
-      toast.error("Failed to update command")
+      console.error("Error updating command:", error);
+      toast.error("Failed to update command");
     }
-  }
+  };
 
   const toggleSubcommand = async (parentCommand: string, subcommandName: string, is_enabled: boolean) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Database connection failed")
-        return
+        toast.error("Database connection failed");
+        return;
       }
 
+      // Since parent_command doesn't exist in schema, just update by name
       const { error } = await supabase
         .from("commands")
         .update({ is_enabled })
@@ -150,9 +171,9 @@ export function CommandsTable() {
         .eq("parent_command", parentCommand)
 
       if (error) {
-        console.error("Error updating subcommand:", error)
-        toast.error("Failed to update subcommand")
-        return
+        console.error("Error updating subcommand:", error);
+        toast.error("Failed to update subcommand");
+        return;
       }
 
       // Update local state
@@ -164,66 +185,66 @@ export function CommandsTable() {
               subcommands: cmd.subcommands.map((sub) => (sub.name === subcommandName ? { ...sub, is_enabled } : sub)),
             }
           }
-          return cmd
-        }),
-      )
+          return cmd;
+        })
+      );
 
       toast.success(`${subcommandName} ${is_enabled ? "is_enabled" : "disabled"}`)
     } catch (error) {
-      console.error("Error updating subcommand:", error)
-      toast.error("Failed to update subcommand")
+      console.error("Error updating subcommand:", error);
+      toast.error("Failed to update subcommand");
     }
-  }
+  };
 
   const toggleExpanded = (commandName: string) => {
     setExpandedCommands((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(commandName)) {
-        newSet.delete(commandName)
+        newSet.delete(commandName);
       } else {
-        newSet.add(commandName)
+        newSet.add(commandName);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
       case "moderation":
-        return <Shield className="w-4 h-4" />
+        return <Shield className="w-4 h-4" />;
       case "music":
-        return <Music className="w-4 h-4" />
+        return <Music className="w-4 h-4" />;
       case "utility":
-        return <Wrench className="w-4 h-4" />
+        return <Wrench className="w-4 h-4" />;
       case "fun":
-        return <GamepadIcon className="w-4 h-4" />
+        return <GamepadIcon className="w-4 h-4" />;
       case "social":
-        return <Users className="w-4 h-4" />
+        return <Users className="w-4 h-4" />;
       case "admin":
-        return <Settings className="w-4 h-4" />
+        return <Settings className="w-4 h-4" />;
       default:
-        return <Command className="w-4 h-4" />
+        return <Command className="w-4 h-4" />;
     }
-  }
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category.toLowerCase()) {
       case "moderation":
-        return "bg-red-500/20 text-red-300 border-red-500/30"
+        return "bg-red-500/20 text-red-300 border-red-500/30";
       case "music":
-        return "bg-purple-500/20 text-purple-300 border-purple-500/30"
+        return "bg-purple-500/20 text-purple-300 border-purple-500/30";
       case "utility":
-        return "bg-blue-500/20 text-blue-300 border-blue-500/30"
+        return "bg-blue-500/20 text-blue-300 border-blue-500/30";
       case "fun":
-        return "bg-green-500/20 text-green-300 border-green-500/30"
+        return "bg-green-500/20 text-green-300 border-green-500/30";
       case "social":
-        return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+        return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
       case "admin":
-        return "bg-orange-500/20 text-orange-300 border-orange-500/30"
+        return "bg-orange-500/20 text-orange-300 border-orange-500/30";
       default:
-        return "bg-slate-500/20 text-slate-300 border-slate-500/30"
+        return "bg-slate-500/20 text-slate-300 border-slate-500/30";
     }
-  }
+  };
 
   const filteredCommands = commands.filter((command) => {
     const matchesSearch =
@@ -232,19 +253,22 @@ export function CommandsTable() {
       command.subcommands?.some(
         (sub) =>
           sub.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          sub.description.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+          sub.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-    const matchesCategory = categoryFilter === "all" || command.category === categoryFilter
+    const matchesCategory =
+      categoryFilter === "all" || command.category === categoryFilter;
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "is_enabled" && command.is_enabled) ||
       (statusFilter === "disabled" && !command.is_enabled)
 
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
-  const categories = Array.from(new Set(commands.map((cmd) => cmd.category))).filter(Boolean)
+  const categories = Array.from(
+    new Set(commands.map((cmd) => cmd.category).filter(Boolean))
+  ) as string[];
 
   if (loading) {
     return (
@@ -256,7 +280,7 @@ export function CommandsTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -279,7 +303,9 @@ export function CommandsTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -327,9 +353,13 @@ export function CommandsTable() {
                 ? "No commands found matching your filters."
                 : "No commands found."}
             </p>
-            {!searchTerm && categoryFilter === "all" && statusFilter === "all" && (
-              <p className="text-sm text-emerald-300/40">Commands will appear here once they're registered.</p>
-            )}
+            {!searchTerm &&
+              categoryFilter === "all" &&
+              statusFilter === "all" && (
+                <p className="text-sm text-emerald-300/40">
+                  Commands will appear here once they're registered.
+                </p>
+              )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -344,7 +374,8 @@ export function CommandsTable() {
                     <div className="flex items-center justify-between p-4 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                          {command.subcommands && command.subcommands.length > 0 ? (
+                          {command.subcommands &&
+                          command.subcommands.length > 0 ? (
                             expandedCommands.has(command.name) ? (
                               <ChevronDown className="w-4 h-4 text-emerald-400" />
                             ) : (
@@ -353,31 +384,43 @@ export function CommandsTable() {
                           ) : (
                             <div className="w-4 h-4" />
                           )}
-                          {getCategoryIcon(command.category)}
+                          {getCategoryIcon(command.category || "default")}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">/{command.name}</span>
-                            <Badge variant="outline" className={getCategoryColor(command.category)}>
-                              {command.category}
+                            <span className="font-medium text-white">
+                              /{command.name}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={getCategoryColor(
+                                command.category || "default"
+                              )}
+                            >
+                              {command.category || "Unknown"}
                             </Badge>
-                            {command.subcommands && command.subcommands.length > 0 && (
-                              <Badge
-                                variant="outline"
-                                className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              >
-                                {command.subcommands.length} subcommands
-                              </Badge>
-                            )}
+                            {command.subcommands &&
+                              command.subcommands.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                >
+                                  {command.subcommands.length} subcommands
+                                </Badge>
+                              )}
                           </div>
-                          <p className="text-sm text-emerald-200/80 mt-1">{command.description}</p>
+                          <p className="text-sm text-emerald-200/80 mt-1">
+                            {command.description}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <div className="flex items-center gap-1 text-emerald-300">
                             <BarChart3 className="w-4 h-4" />
-                            <span className="font-medium">{command.usage_count.toLocaleString()}</span>
+                            <span className="font-medium">
+                              {(command.usage_count || 0).toLocaleString()}
+                            </span>
                           </div>
                           <p className="text-xs text-emerald-300/60">uses</p>
                         </div>
@@ -411,20 +454,30 @@ export function CommandsTable() {
                                     <div className="font-medium text-white">
                                       /{command.name} {subcommand.name}
                                     </div>
-                                    <p className="text-sm text-emerald-200/70">{subcommand.description}</p>
+                                    <p className="text-sm text-emerald-200/70">
+                                      {subcommand.description}
+                                    </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                   <div className="text-right">
                                     <div className="text-sm text-emerald-300 font-medium">
-                                      {subcommand.usage_count.toLocaleString()}
+                                      {(
+                                        subcommand.usage_count || 0
+                                      ).toLocaleString()}
                                     </div>
-                                    <p className="text-xs text-emerald-300/60">uses</p>
+                                    <p className="text-xs text-emerald-300/60">
+                                      uses
+                                    </p>
                                   </div>
                                   <Switch
                                     checked={subcommand.is_enabled}
                                     onCheckedChange={(checked) =>
-                                      toggleSubcommand(command.name, subcommand.name, checked)
+                                      toggleSubcommand(
+                                        command.name,
+                                        subcommand.name,
+                                        checked
+                                      )
                                     }
                                     className="data-[state=checked]:bg-emerald-600"
                                   />
@@ -443,5 +496,5 @@ export function CommandsTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

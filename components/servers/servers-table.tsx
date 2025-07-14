@@ -1,70 +1,99 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { MoreHorizontal, Search, Settings, Loader2, RefreshCw } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { createClient } from "@/lib/supabase/client"
-import type { Guild } from "@/lib/types/database"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  MoreHorizontal,
+  Search,
+  Settings,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
+import type { Guild } from "@/types/database";
+import { toast } from "sonner";
 
 export function ServersTable() {
-  const [servers, setServers] = useState<Guild[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
+  const [servers, setServers] = useState<Guild[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchServers = async () => {
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.from("guilds").select("*").order("created_at", { ascending: false })
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("guilds")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching servers:", error)
-        toast.error("Failed to fetch servers")
-        return
+        console.error("Error fetching servers:", error);
+        toast.error("Failed to fetch servers");
+        return;
       }
 
-      setServers(data || [])
+      setServers(data || []);
       if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} servers`)
+        toast.success(`Loaded ${data.length} servers`);
       }
     } catch (error) {
-      console.error("Error fetching servers:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching servers:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchServers()
-  }, [])
+    fetchServers();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchServers()
-  }
+    setRefreshing(true);
+    fetchServers();
+  };
 
-  const filteredServers = servers.filter((server) => server.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredServers = servers.filter((server) =>
+    server.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusColor = (status?: string) => {
     switch (status) {
       case "active":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
       case "warning":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
       case "inactive":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       default:
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -76,7 +105,7 @@ export function ServersTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -96,7 +125,9 @@ export function ServersTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -116,7 +147,9 @@ export function ServersTable() {
         {filteredServers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No servers found matching your search." : "No servers found."}
+              {searchTerm
+                ? "No servers found matching your search."
+                : "No servers found."}
             </p>
             {!searchTerm && (
               <p className="text-sm text-emerald-300/40">
@@ -133,17 +166,31 @@ export function ServersTable() {
                 <TableHead className="text-emerald-200">Owner ID</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredServers.map((server) => (
-                <TableRow key={server.guild_id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell className="font-medium text-white">{server.name}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{server.guild_id}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{server.owner_id}</TableCell>
+                <TableRow
+                  key={server.guild_id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
+                  <TableCell className="font-medium text-white">
+                    {server.name}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {server.guild_id}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {server.owner_id}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={getStatusColor(server.status)}>
+                    <Badge
+                      variant="outline"
+                      className={getStatusColor(server.status)}
+                    >
                       {server.status || "active"}
                     </Badge>
                   </TableCell>
@@ -161,7 +208,10 @@ export function ServersTable() {
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-white/10 backdrop-blur-xl border-emerald-400/20"
+                      >
                         <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                           <Settings className="w-4 h-4 mr-2" />
                           Configure
@@ -169,7 +219,9 @@ export function ServersTable() {
                         <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">Remove Bot</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">
+                          Remove Bot
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -180,5 +232,5 @@ export function ServersTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

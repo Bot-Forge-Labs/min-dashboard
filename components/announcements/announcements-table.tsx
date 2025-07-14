@@ -1,12 +1,25 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,84 +28,109 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Search, Eye, Edit, Trash2, MoreHorizontal, Loader2, RefreshCw, Plus } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { createClient } from "@/lib/supabase/client"
-import type { Announcement, Guild } from "@/lib/types/database"
-import { toast } from "sonner"
+} from "@/components/ui/dialog";
+import {
+  Search,
+  Eye,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  Loader2,
+  RefreshCw,
+  Plus,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
+import type { Announcement, Guild } from "@/types/database";
+import { toast } from "sonner";
 
 export function AnnouncementsTable() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [guilds, setGuilds] = useState<Guild[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [guilds, setGuilds] = useState<Guild[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: "",
     content: "",
     guild_id: "",
     channel_id: "",
     embed_color: 9166521, // Default emerald color
-  })
+  });
 
   const fetchData = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const [announcementsResult, guildsResult] = await Promise.all([
-        supabase.from("announcements").select("*").order("created_at", { ascending: false }),
-        supabase.from("guilds").select("*").order("created_at", { ascending: false }),
-      ])
+        supabase
+          .from("announcements")
+          .select("*")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("guilds")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      ]);
 
       if (announcementsResult.error) {
-        console.error("Error fetching announcements:", announcementsResult.error)
-        toast.error("Failed to fetch announcements")
-        return
+        console.error(
+          "Error fetching announcements:",
+          announcementsResult.error
+        );
+        toast.error("Failed to fetch announcements");
+        return;
       }
 
       if (guildsResult.error) {
-        console.error("Error fetching guilds:", guildsResult.error)
-        toast.error("Failed to fetch guilds")
-        return
+        console.error("Error fetching guilds:", guildsResult.error);
+        toast.error("Failed to fetch guilds");
+        return;
       }
 
-      setAnnouncements(announcementsResult.data || [])
-      setGuilds(guildsResult.data || [])
+      setAnnouncements(announcementsResult.data || []);
+      setGuilds(guildsResult.data || []);
 
       if (announcementsResult.data && announcementsResult.data.length > 0) {
-        toast.success(`Loaded ${announcementsResult.data.length} announcements`)
+        toast.success(
+          `Loaded ${announcementsResult.data.length} announcements`
+        );
       }
     } catch (error) {
-      console.error("Error fetching announcements:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching announcements:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchData()
-  }
+    setRefreshing(true);
+    fetchData();
+  };
 
   const handleCreateAnnouncement = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const { error } = await supabase.from("announcements").insert({
@@ -102,60 +140,63 @@ export function AnnouncementsTable() {
         channel_id: newAnnouncement.channel_id,
         embed_color: newAnnouncement.embed_color,
         created_by: "dashboard_user", // You might want to get this from auth
-      })
+      });
 
       if (error) {
-        console.error("Error creating announcement:", error)
-        toast.error(`Failed to create announcement: ${error.message}`)
-        return
+        console.error("Error creating announcement:", error);
+        toast.error(`Failed to create announcement: ${error.message}`);
+        return;
       }
 
-      toast.success("Announcement created successfully")
-      setIsCreateDialogOpen(false)
+      toast.success("Announcement created successfully");
+      setIsCreateDialogOpen(false);
       setNewAnnouncement({
         title: "",
         content: "",
         guild_id: "",
         channel_id: "",
         embed_color: 9166521,
-      })
-      fetchData()
+      });
+      fetchData();
     } catch (error) {
-      console.error("Error creating announcement:", error)
-      toast.error("Failed to create announcement")
+      console.error("Error creating announcement:", error);
+      toast.error("Failed to create announcement");
     }
-  }
+  };
 
   const handleDeleteAnnouncement = async (announcementId: number) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const { error } = await supabase.from("announcements").delete().eq("id", announcementId)
+      const { error } = await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", announcementId);
 
       if (error) {
-        console.error("Error deleting announcement:", error)
-        toast.error("Failed to delete announcement")
-        return
+        console.error("Error deleting announcement:", error);
+        toast.error("Failed to delete announcement");
+        return;
       }
 
-      toast.success("Announcement deleted successfully")
-      fetchData() // Refresh the list
+      toast.success("Announcement deleted successfully");
+      fetchData(); // Refresh the list
     } catch (error) {
-      console.error("Error deleting announcement:", error)
-      toast.error("Failed to delete announcement")
+      console.error("Error deleting announcement:", error);
+      toast.error("Failed to delete announcement");
     }
-  }
+  };
 
   const filteredAnnouncements = announcements.filter(
     (announcement) =>
-      announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      announcement?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      announcement.created_by.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      announcement.created_by.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -167,7 +208,7 @@ export function AnnouncementsTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -188,19 +229,26 @@ export function AnnouncementsTable() {
               disabled={refreshing}
               className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+              />
               Refresh
             </Button>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            >
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
+                <Button className="bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Announcement
                 </Button>
               </DialogTrigger>
               <DialogContent className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Create New Announcement</DialogTitle>
+                  <DialogTitle className="text-white">
+                    Create New Announcement
+                  </DialogTitle>
                   <DialogDescription className="text-emerald-200/80">
                     Create a new announcement for your server.
                   </DialogDescription>
@@ -213,12 +261,21 @@ export function AnnouncementsTable() {
                     <select
                       id="guildSelect"
                       value={newAnnouncement.guild_id}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, guild_id: e.target.value })}
+                      onChange={(e) =>
+                        setNewAnnouncement({
+                          ...newAnnouncement,
+                          guild_id: e.target.value,
+                        })
+                      }
                       className="w-full mt-1 p-2 bg-white/5 border border-emerald-400/20 rounded-md text-white"
                     >
                       <option value="">Select a guild</option>
                       {guilds.map((guild) => (
-                        <option key={guild.guild_id} value={guild.guild_id} className="bg-gray-800">
+                        <option
+                          key={guild.guild_id}
+                          value={guild.guild_id}
+                          className="bg-gray-800"
+                        >
                           {guild.name}
                         </option>
                       ))}
@@ -231,7 +288,12 @@ export function AnnouncementsTable() {
                     <Input
                       id="title"
                       value={newAnnouncement.title}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                      onChange={(e) =>
+                        setNewAnnouncement({
+                          ...newAnnouncement,
+                          title: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter announcement title"
                     />
@@ -243,7 +305,12 @@ export function AnnouncementsTable() {
                     <Textarea
                       id="content"
                       value={newAnnouncement.content}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
+                      onChange={(e) =>
+                        setNewAnnouncement({
+                          ...newAnnouncement,
+                          content: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter announcement content"
                       rows={4}
@@ -256,7 +323,12 @@ export function AnnouncementsTable() {
                     <Input
                       id="channelId"
                       value={newAnnouncement.channel_id}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, channel_id: e.target.value })}
+                      onChange={(e) =>
+                        setNewAnnouncement({
+                          ...newAnnouncement,
+                          channel_id: e.target.value,
+                        })
+                      }
                       className="bg-white/5 border-emerald-400/20 text-white"
                       placeholder="Enter channel ID"
                     />
@@ -269,11 +341,16 @@ export function AnnouncementsTable() {
                       <Input
                         id="embedColor"
                         type="color"
-                        value={`#${newAnnouncement.embed_color.toString(16).padStart(6, "0")}`}
+                        value={`#${newAnnouncement.embed_color
+                          .toString(16)
+                          .padStart(6, "0")}`}
                         onChange={(e) =>
                           setNewAnnouncement({
                             ...newAnnouncement,
-                            embed_color: Number.parseInt(e.target.value.replace("#", ""), 16),
+                            embed_color: Number.parseInt(
+                              e.target.value.replace("#", ""),
+                              16
+                            ),
                           })
                         }
                         className="w-16 h-10 bg-white/5 border-emerald-400/20"
@@ -283,7 +360,8 @@ export function AnnouncementsTable() {
                         onChange={(e) =>
                           setNewAnnouncement({
                             ...newAnnouncement,
-                            embed_color: Number.parseInt(e.target.value) || 9166521,
+                            embed_color:
+                              Number.parseInt(e.target.value) || 9166521,
                           })
                         }
                         className="bg-white/5 border-emerald-400/20 text-white"
@@ -309,7 +387,7 @@ export function AnnouncementsTable() {
                       !newAnnouncement.guild_id ||
                       !newAnnouncement.channel_id
                     }
-                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+                    className="bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
                   >
                     Create Announcement
                   </Button>
@@ -334,10 +412,14 @@ export function AnnouncementsTable() {
         {filteredAnnouncements.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No announcements found matching your search." : "No announcements found."}
+              {searchTerm
+                ? "No announcements found matching your search."
+                : "No announcements found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Announcements will appear here when they are created.</p>
+              <p className="text-sm text-emerald-300/40">
+                Announcements will appear here when they are created.
+              </p>
             )}
           </div>
         ) : (
@@ -350,25 +432,45 @@ export function AnnouncementsTable() {
                 <TableHead className="text-emerald-200">Created By</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
                 <TableHead className="text-emerald-200">Color</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAnnouncements.map((announcement) => (
-                <TableRow key={announcement.id} className="border-emerald-400/20 hover:bg-white/5">
-                  <TableCell className="font-medium text-white max-w-xs">{announcement.title}</TableCell>
-                  <TableCell className="text-emerald-200/80 max-w-md truncate">{announcement.content}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.channel_id}</TableCell>
-                  <TableCell className="text-emerald-200/80 font-mono text-sm">{announcement.created_by}</TableCell>
+                <TableRow
+                  key={announcement.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
+                  <TableCell className="font-medium text-white max-w-xs">
+                    {announcement.title}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 max-w-md truncate">
+                    {announcement.content}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {announcement.channel_id}
+                  </TableCell>
+                  <TableCell className="text-emerald-200/80 font-mono text-sm">
+                    {announcement.created_by}
+                  </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(
+                      new Date(announcement?.created_at ?? new Date()),
+                      {
+                        addSuffix: true,
+                      }
+                    )}
                   </TableCell>
                   <TableCell>
                     <div
                       className="w-6 h-6 rounded border border-emerald-400/20"
                       style={{
                         backgroundColor: announcement.embed_color
-                          ? `#${announcement.embed_color.toString(16).padStart(6, "0")}`
+                          ? `#${announcement.embed_color
+                              .toString(16)
+                              .padStart(6, "0")}`
                           : "#8be2b9",
                       }}
                     />
@@ -384,7 +486,10 @@ export function AnnouncementsTable() {
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/10 backdrop-blur-xl border-emerald-400/20">
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-white/10 backdrop-blur-xl border-emerald-400/20"
+                      >
                         <DropdownMenuItem className="text-emerald-200 hover:bg-emerald-500/10">
                           <Eye className="w-4 h-4 mr-2" />
                           View
@@ -395,7 +500,9 @@ export function AnnouncementsTable() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-400 hover:bg-red-500/10"
-                          onClick={() => handleDeleteAnnouncement(announcement.id)}
+                          onClick={() =>
+                            handleDeleteAnnouncement(announcement.id)
+                          }
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -410,5 +517,5 @@ export function AnnouncementsTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

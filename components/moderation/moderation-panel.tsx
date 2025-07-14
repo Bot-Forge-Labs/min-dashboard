@@ -1,129 +1,163 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
-import { Ban, UserX, AlertTriangle, Clock, Shield, Search, Loader2, Eye, History } from "lucide-react"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import {
+  Ban,
+  UserX,
+  AlertTriangle,
+  Clock,
+  Shield,
+  Search,
+  Loader2,
+  Eye,
+  History,
+} from "lucide-react";
 
 interface User {
-  id: string
-  username: string
-  discriminator: string
-  avatar_url?: string
-  roles: string[]
-  message_count: number
-  joined_at: string
-  last_active: string
+  id: string;
+  username: string;
+  discriminator?: string;
+  avatar_url?: string;
+  roles: string[] | null;
+  message_count?: number;
+  joined_at: string | null;
+  last_active?: string | null;
+  left_at?: string | null;
+  level?: number | null;
+  status?: string | null;
+  xp?: number | null;
 }
 
 interface PunishmentForm {
-  userId: string
-  action: "warn" | "mute" | "timeout" | "kick" | "ban"
-  reason: string
-  duration?: string
-  deleteMessages?: boolean
+  userId: string;
+  action: "warn" | "mute" | "timeout" | "kick" | "ban";
+  reason: string;
+  duration?: string;
+  deleteMessages?: boolean;
 }
 
 export function ModerationPanel() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [punishmentForm, setPunishmentForm] = useState<PunishmentForm>({
     userId: "",
     action: "warn",
     reason: "",
     duration: "",
     deleteMessages: false,
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    fetchUsers();
+  }, []);
 
   const fetchUsers = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Database connection failed")
-        return
+        toast.error("Database connection failed");
+        return;
       }
 
       const { data, error } = await supabase
         .from("users")
         .select("*")
-        .order("last_active", { ascending: false })
-        .limit(50)
+        .order("joined_at", { ascending: false })
+        .limit(50);
 
       if (error) {
-        console.error("Error fetching users:", error)
-        toast.error("Failed to fetch users")
-        return
+        console.error("Error fetching users:", error);
+        toast.error("Failed to fetch users");
+        return;
       }
 
-      setUsers(data || [])
+      setUsers(data || []);
     } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching users:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePunishUser = async () => {
     if (!selectedUser || !punishmentForm.reason.trim()) {
-      toast.error("Please select a user and provide a reason")
-      return
+      toast.error("Please select a user and provide a reason");
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Database connection failed")
-        return
+        toast.error("Database connection failed");
+        return;
       }
 
       // Get current user (moderator)
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Not authenticated")
-        return
+        toast.error("Not authenticated");
+        return;
       }
 
       // Create punishment record
       const punishmentData = {
         user_id: selectedUser.id,
         moderator_id: user.id,
-        action: punishmentForm.action,
+        command_name: punishmentForm.action,
         reason: punishmentForm.reason,
-        duration: punishmentForm.duration || null,
         expires_at: punishmentForm.duration
-          ? new Date(Date.now() + parseDuration(punishmentForm.duration)).toISOString()
+          ? new Date(
+              Date.now() + parseDuration(punishmentForm.duration)
+            ).toISOString()
           : null,
         active: ["mute", "timeout", "ban"].includes(punishmentForm.action),
-        guild_id: "default_guild", // You'd get this from context
-      }
+      };
 
-      const { error: punishmentError } = await supabase.from("punishments").insert(punishmentData)
+      const { error: punishmentError } = await supabase
+        .from("punishments")
+        .insert(punishmentData);
 
       if (punishmentError) {
-        console.error("Error creating punishment:", punishmentError)
-        toast.error("Failed to create punishment record")
-        return
+        console.error("Error creating punishment:", punishmentError);
+        toast.error("Failed to create punishment record");
+        return;
       }
 
       // Create moderation log
@@ -138,12 +172,14 @@ export function ModerationPanel() {
           deleteMessages: punishmentForm.deleteMessages,
           expires_at: punishmentData.expires_at,
         },
-      }
+      };
 
-      const { error: logError } = await supabase.from("mod_logs").insert(logData)
+      const { error: logError } = await supabase
+        .from("mod_logs")
+        .insert(logData);
 
       if (logError) {
-        console.error("Error creating mod log:", logError)
+        console.error("Error creating mod log:", logError);
       }
 
       // Execute punishment via Discord API
@@ -158,17 +194,19 @@ export function ModerationPanel() {
             duration: punishmentForm.duration,
             deleteMessages: punishmentForm.deleteMessages,
           }),
-        })
+        });
 
         if (!response.ok) {
-          const error = await response.text()
-          throw new Error(error)
+          const error = await response.text();
+          throw new Error(error);
         }
 
-        toast.success(`Successfully ${punishmentForm.action}ned ${selectedUser.username}`)
+        toast.success(
+          `Successfully ${punishmentForm.action}ned ${selectedUser.username}`
+        );
       } catch (discordError) {
-        console.error("Discord API error:", discordError)
-        toast.warning("Punishment logged but Discord action may have failed")
+        console.error("Discord API error:", discordError);
+        toast.warning("Punishment logged but Discord action may have failed");
       }
 
       // Reset form and close dialog
@@ -178,40 +216,43 @@ export function ModerationPanel() {
         reason: "",
         duration: "",
         deleteMessages: false,
-      })
-      setSelectedUser(null)
-      setDialogOpen(false)
+      });
+      setSelectedUser(null);
+      setDialogOpen(false);
     } catch (error) {
-      console.error("Error punishing user:", error)
-      toast.error("Failed to punish user")
+      console.error("Error punishing user:", error);
+      toast.error("Failed to punish user");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const parseDuration = (duration: string): number => {
-    const match = duration.match(/^(\d+)([smhd])$/)
-    if (!match) return 0
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return 0;
 
-    const value = Number.parseInt(match[1])
-    const unit = match[2]
+    const value = Number.parseInt(match[1]);
+    const unit = match[2];
 
     switch (unit) {
       case "s":
-        return value * 1000
+        return value * 1000;
       case "m":
-        return value * 60 * 1000
+        return value * 60 * 1000;
       case "h":
-        return value * 60 * 60 * 1000
+        return value * 60 * 60 * 1000;
       case "d":
-        return value * 24 * 60 * 60 * 1000
+        return value * 24 * 60 * 60 * 1000;
       default:
-        return 0
+        return 0;
     }
-  }
+  };
 
-  const openPunishmentDialog = (user: User, action: PunishmentForm["action"]) => {
-    setSelectedUser(user)
+  const openPunishmentDialog = (
+    user: User,
+    action: PunishmentForm["action"]
+  ) => {
+    setSelectedUser(user);
     setPunishmentForm((prev) => ({
       ...prev,
       userId: user.id,
@@ -219,45 +260,47 @@ export function ModerationPanel() {
       reason: "",
       duration: "",
       deleteMessages: false,
-    }))
-    setDialogOpen(true)
-  }
+    }));
+    setDialogOpen(true);
+  };
 
   const filteredUsers = users.filter(
-    (user) => user.username.toLowerCase().includes(searchTerm.toLowerCase()) || user.id.includes(searchTerm),
-  )
+    (user) =>
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.id.includes(searchTerm)
+  );
 
   const getActionIcon = (action: string) => {
     switch (action) {
       case "warn":
-        return <AlertTriangle className="w-4 h-4" />
+        return <AlertTriangle className="w-4 h-4" />;
       case "mute":
       case "timeout":
-        return <Clock className="w-4 h-4" />
+        return <Clock className="w-4 h-4" />;
       case "kick":
-        return <UserX className="w-4 h-4" />
+        return <UserX className="w-4 h-4" />;
       case "ban":
-        return <Ban className="w-4 h-4" />
+        return <Ban className="w-4 h-4" />;
       default:
-        return <Shield className="w-4 h-4" />
+        return <Shield className="w-4 h-4" />;
     }
-  }
+  };
 
   const getActionColor = (action: string) => {
     switch (action) {
       case "warn":
-        return "bg-yellow-600 hover:bg-yellow-500"
+        return "bg-yellow-600 hover:bg-yellow-500";
       case "mute":
       case "timeout":
-        return "bg-purple-600 hover:bg-purple-500"
+        return "bg-purple-600 hover:bg-purple-500";
       case "kick":
-        return "bg-orange-600 hover:bg-orange-500"
+        return "bg-orange-600 hover:bg-orange-500";
       case "ban":
-        return "bg-red-600 hover:bg-red-500"
+        return "bg-red-600 hover:bg-red-500";
       default:
-        return "bg-gray-600 hover:bg-gray-500"
+        return "bg-gray-600 hover:bg-gray-500";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -269,7 +312,7 @@ export function ModerationPanel() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -280,7 +323,9 @@ export function ModerationPanel() {
             <Shield className="w-5 h-5" />
             Moderation Panel
           </CardTitle>
-          <CardDescription className="text-emerald-200/80">Manage users and apply moderation actions</CardDescription>
+          <CardDescription className="text-emerald-200/80">
+            Manage users and apply moderation actions
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search */}
@@ -306,26 +351,39 @@ export function ModerationPanel() {
                     <AvatarImage
                       src={
                         user.avatar_url ||
-                        `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`
+                        `https://cdn.discordapp.com/embed/avatars/${Math.floor(
+                          Math.random() * 6
+                        )}.png`
                       }
                       alt={user.username}
                     />
-                    <AvatarFallback className="bg-emerald-600 text-white">{user.username.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="bg-emerald-600 text-white">
+                      {user.username.charAt(0)}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="font-medium text-white">
-                      {user.username}#{user.discriminator}
+                      {user.username}
+                      {user.discriminator && `#${user.discriminator}`}
                     </div>
                     <div className="text-sm text-emerald-300/60">
-                      {user.message_count} messages • Joined {new Date(user.joined_at).toLocaleDateString()}
+                      {user.message_count || 0} messages • Joined{" "}
+                      {user.joined_at
+                        ? new Date(user.joined_at).toLocaleDateString()
+                        : "Unknown"}
                     </div>
                     <div className="flex gap-1 mt-1">
-                      {user.roles.slice(0, 3).map((role, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {role}
-                        </Badge>
-                      ))}
-                      {user.roles.length > 3 && (
+                      {user.roles &&
+                        user.roles.slice(0, 3).map((role, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {role}
+                          </Badge>
+                        ))}
+                      {user.roles && user.roles.length > 3 && (
                         <Badge variant="outline" className="text-xs">
                           +{user.roles.length - 3}
                         </Badge>
@@ -373,7 +431,11 @@ export function ModerationPanel() {
                     {getActionIcon("kick")}
                     <span className="ml-1">Kick</span>
                   </Button>
-                  <Button onClick={() => openPunishmentDialog(user, "ban")} size="sm" className={getActionColor("ban")}>
+                  <Button
+                    onClick={() => openPunishmentDialog(user, "ban")}
+                    size="sm"
+                    className={getActionColor("ban")}
+                  >
                     {getActionIcon("ban")}
                     <span className="ml-1">Ban</span>
                   </Button>
@@ -396,7 +458,9 @@ export function ModerationPanel() {
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               {getActionIcon(punishmentForm.action)}
-              {punishmentForm.action.charAt(0).toUpperCase() + punishmentForm.action.slice(1)} User
+              {punishmentForm.action.charAt(0).toUpperCase() +
+                punishmentForm.action.slice(1)}{" "}
+              User
             </DialogTitle>
             <DialogDescription className="text-emerald-200/80">
               {selectedUser &&
@@ -431,7 +495,12 @@ export function ModerationPanel() {
               <Textarea
                 placeholder="Enter reason for this action..."
                 value={punishmentForm.reason}
-                onChange={(e) => setPunishmentForm((prev) => ({ ...prev, reason: e.target.value }))}
+                onChange={(e) =>
+                  setPunishmentForm((prev) => ({
+                    ...prev,
+                    reason: e.target.value,
+                  }))
+                }
                 className="bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
                 rows={3}
               />
@@ -443,7 +512,12 @@ export function ModerationPanel() {
                 <Input
                   placeholder="e.g., 1h, 30m, 7d"
                   value={punishmentForm.duration}
-                  onChange={(e) => setPunishmentForm((prev) => ({ ...prev, duration: e.target.value }))}
+                  onChange={(e) =>
+                    setPunishmentForm((prev) => ({
+                      ...prev,
+                      duration: e.target.value,
+                    }))
+                  }
                   className="bg-white/5 border-emerald-400/20 text-white placeholder:text-emerald-300/60"
                 />
                 <p className="text-xs text-emerald-300/60 mt-1">
@@ -458,7 +532,12 @@ export function ModerationPanel() {
                   type="checkbox"
                   id="deleteMessages"
                   checked={punishmentForm.deleteMessages}
-                  onChange={(e) => setPunishmentForm((prev) => ({ ...prev, deleteMessages: e.target.checked }))}
+                  onChange={(e) =>
+                    setPunishmentForm((prev) => ({
+                      ...prev,
+                      deleteMessages: e.target.checked,
+                    }))
+                  }
                   className="rounded border-emerald-400/20"
                 />
                 <Label htmlFor="deleteMessages" className="text-emerald-200">
@@ -471,13 +550,22 @@ export function ModerationPanel() {
               <Button
                 onClick={handlePunishUser}
                 disabled={submitting || !punishmentForm.reason.trim()}
-                className={`${getActionColor(punishmentForm.action)} text-white`}
+                className={`${getActionColor(
+                  punishmentForm.action
+                )} text-white`}
               >
-                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : getActionIcon(punishmentForm.action)}
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  getActionIcon(punishmentForm.action)
+                )}
                 <span className="ml-2">
                   {submitting
                     ? "Processing..."
-                    : `${punishmentForm.action.charAt(0).toUpperCase() + punishmentForm.action.slice(1)} User`}
+                    : `${
+                        punishmentForm.action.charAt(0).toUpperCase() +
+                        punishmentForm.action.slice(1)
+                      } User`}
                 </span>
               </Button>
               <Button
@@ -492,5 +580,5 @@ export function ModerationPanel() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

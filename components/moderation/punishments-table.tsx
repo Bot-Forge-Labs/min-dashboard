@@ -1,109 +1,136 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Shield, User, Calendar, Clock, X, Loader2, RefreshCw } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { Punishment } from "@/lib/types/database"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Search,
+  Shield,
+  User,
+  Calendar,
+  Clock,
+  X,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { Punishment } from "@/types/database";
+import { toast } from "sonner";
 
 export function PunishmentsTable() {
-  const [punishments, setPunishments] = useState<Punishment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
+  const [punishments, setPunishments] = useState<Punishment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchPunishments = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const { data, error } = await supabase
         .from("punishments")
         .select("*")
         .order("issued_at", { ascending: false })
-        .limit(100)
+        .limit(100);
 
       if (error) {
-        console.error("Error fetching punishments:", error)
-        toast.error("Failed to fetch punishments")
-        return
+        console.error("Error fetching punishments:", error);
+        toast.error("Failed to fetch punishments");
+        return;
       }
 
-      setPunishments(data || [])
+      setPunishments(data || []);
 
       if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} punishments`)
+        toast.success(`Loaded ${data.length} punishments`);
       }
     } catch (error) {
-      console.error("Error fetching punishments:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching punishments:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchPunishments()
-  }, [])
+    fetchPunishments();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchPunishments()
-  }
+    setRefreshing(true);
+    fetchPunishments();
+  };
 
   const handleRevokePunishment = async (punishmentId: number) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const { error } = await supabase.from("punishments").update({ active: false }).eq("id", punishmentId)
+      const { error } = await supabase
+        .from("punishments")
+        .update({ active: false })
+        .eq("id", punishmentId);
 
       if (error) {
-        console.error("Error revoking punishment:", error)
-        toast.error("Failed to revoke punishment")
-        return
+        console.error("Error revoking punishment:", error);
+        toast.error("Failed to revoke punishment");
+        return;
       }
 
-      toast.success("Punishment revoked successfully")
-      fetchPunishments()
+      toast.success("Punishment revoked successfully");
+      fetchPunishments();
     } catch (error) {
-      console.error("Error revoking punishment:", error)
-      toast.error("Failed to revoke punishment")
+      console.error("Error revoking punishment:", error);
+      toast.error("Failed to revoke punishment");
     }
-  }
+  };
 
   const getCommandColor = (command: string) => {
     switch (command.toLowerCase()) {
       case "ban":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       case "mute":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
       case "warning":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
-  }
+  };
 
   const filteredPunishments = punishments.filter(
     (punishment) =>
-      punishment.command_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      punishment.command_name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       punishment.user_id.includes(searchTerm) ||
       punishment.moderator_id.includes(searchTerm) ||
-      punishment.reason.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      punishment.reason.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -115,7 +142,7 @@ export function PunishmentsTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -124,7 +151,9 @@ export function PunishmentsTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-white">Active Punishments</CardTitle>
-            <CardDescription className="text-emerald-200/80">Manage and track user punishments</CardDescription>
+            <CardDescription className="text-emerald-200/80">
+              Manage and track user punishments
+            </CardDescription>
           </div>
           <Button
             variant="outline"
@@ -133,7 +162,9 @@ export function PunishmentsTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -153,10 +184,14 @@ export function PunishmentsTable() {
         {filteredPunishments.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No punishments found matching your search." : "No punishments found."}
+              {searchTerm
+                ? "No punishments found matching your search."
+                : "No punishments found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">User punishments will appear here when issued.</p>
+              <p className="text-sm text-emerald-300/40">
+                User punishments will appear here when issued.
+              </p>
             )}
           </div>
         ) : (
@@ -170,14 +205,22 @@ export function PunishmentsTable() {
                 <TableHead className="text-emerald-200">Issued</TableHead>
                 <TableHead className="text-emerald-200">Expires</TableHead>
                 <TableHead className="text-emerald-200">Status</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPunishments.map((punishment) => (
-                <TableRow key={punishment.id} className="border-emerald-400/20 hover:bg-white/5">
+                <TableRow
+                  key={punishment.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
                   <TableCell>
-                    <Badge variant="outline" className={getCommandColor(punishment.command_name)}>
+                    <Badge
+                      variant="outline"
+                      className={getCommandColor(punishment.command_name)}
+                    >
                       <Shield className="w-3 h-3 mr-1" />
                       {punishment.command_name}
                     </Badge>
@@ -186,7 +229,9 @@ export function PunishmentsTable() {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-emerald-400/60" />
                       <div>
-                        <p className="font-medium text-white font-mono text-sm">{punishment.user_id}</p>
+                        <p className="font-medium text-white font-mono text-sm">
+                          {punishment.user_id}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
@@ -194,18 +239,24 @@ export function PunishmentsTable() {
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-emerald-400/60" />
                       <div>
-                        <p className="font-medium text-white font-mono text-sm">{punishment.moderator_id}</p>
+                        <p className="font-medium text-white font-mono text-sm">
+                          {punishment.moderator_id}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">{punishment.reason}</p>
+                    <p className="text-sm text-emerald-200/80 max-w-xs truncate">
+                      {punishment.reason}
+                    </p>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-emerald-200/80">
                       <Calendar className="w-4 h-4" />
                       <div>
-                        <p className="text-sm">{new Date(punishment.issued_at).toLocaleDateString()}</p>
+                        <p className="text-sm">
+                          {new Date(punishment.issued_at).toLocaleDateString()}
+                        </p>
                         <p className="text-xs text-emerald-200/60">
                           {new Date(punishment.issued_at).toLocaleTimeString()}
                         </p>
@@ -217,14 +268,23 @@ export function PunishmentsTable() {
                       <div className="flex items-center gap-2 text-emerald-200/80">
                         <Clock className="w-4 h-4" />
                         <div>
-                          <p className="text-sm">{new Date(punishment.expires_at).toLocaleDateString()}</p>
+                          <p className="text-sm">
+                            {new Date(
+                              punishment.expires_at
+                            ).toLocaleDateString()}
+                          </p>
                           <p className="text-xs text-emerald-200/60">
-                            {new Date(punishment.expires_at).toLocaleTimeString()}
+                            {new Date(
+                              punishment.expires_at
+                            ).toLocaleTimeString()}
                           </p>
                         </div>
                       </div>
                     ) : (
-                      <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                      <Badge
+                        variant="outline"
+                        className="bg-purple-500/10 text-purple-400 border-purple-500/20"
+                      >
                         Permanent
                       </Badge>
                     )}
@@ -261,5 +321,5 @@ export function PunishmentsTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

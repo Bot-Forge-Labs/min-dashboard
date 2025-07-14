@@ -1,36 +1,32 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { Database } from "@/types";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+if (
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+) {
+  throw new Error(
+    "Supabase environment variables are not configured. Please check your .env file."
+  );
+}
 
 export async function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const cookieStore = await cookies();
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("Missing Supabase environment variables:")
-    console.error("NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl)
-    console.error("NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!supabaseAnonKey)
-    throw new Error("Supabase environment variables not configured")
-  }
-
-  // Validate URL format
-  try {
-    new URL(supabaseUrl)
-  } catch {
-    console.error("Invalid Supabase URL format:", supabaseUrl)
-    throw new Error("Invalid Supabase URL format")
-  }
-
-  try {
-    const cookieStore = await cookies()
-
-    const client = createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
       cookies: {
         getAll() {
-          return cookieStore.getAll()
+          return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
@@ -38,11 +34,43 @@ export async function createClient() {
           }
         },
       },
-    })
-
-    return client
-  } catch (error) {
-    console.error("Failed to create Supabase client:", error)
-    throw new Error("Failed to create Supabase client")
-  }
+    }
+  );
 }
+
+export const createAdminClient = async () => {
+  const cookieStore = await cookies();
+
+  /**
+   * **IMPORTANT**
+   * The Admin server client utilizies the `service_role` key instead of the normal `anon` key. This is to grant admin users to access the admin panel.
+   *
+   * This will NOT and should never be used for any browswer-facing initialization.
+   *
+   */
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  );
+};
+
+export const useSupabaseServer = createClient;
+export const useAdminSupabaseServer = createAdminClient;

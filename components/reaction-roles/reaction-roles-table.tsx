@@ -1,95 +1,120 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Smile, Hash, User, Calendar, Trash2, Loader2, RefreshCw } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { ReactionRole } from "@/lib/types/database"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Search,
+  Smile,
+  Hash,
+  User,
+  Calendar,
+  Trash2,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { ReactionRole } from "@/types/database";
+import { toast } from "sonner";
 
 export function ReactionRolesTable() {
-  const [reactionRoles, setReactionRoles] = useState<ReactionRole[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [refreshing, setRefreshing] = useState(false)
+  const [reactionRoles, setReactionRoles] = useState<ReactionRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchReactionRoles = async () => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
       const { data, error } = await supabase
         .from("reaction_roles")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(100);
 
       if (error) {
-        console.error("Error fetching reaction roles:", error)
-        toast.error("Failed to fetch reaction roles")
-        return
+        console.error("Error fetching reaction roles:", error);
+        toast.error("Failed to fetch reaction roles");
+        return;
       }
 
-      setReactionRoles(data || [])
+      setReactionRoles(data || []);
 
       if (data && data.length > 0) {
-        toast.success(`Loaded ${data.length} reaction roles`)
+        toast.success(`Loaded ${data.length} reaction roles`);
       }
     } catch (error) {
-      console.error("Error fetching reaction roles:", error)
-      toast.error("Failed to connect to database")
+      console.error("Error fetching reaction roles:", error);
+      toast.error("Failed to connect to database");
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchReactionRoles()
-  }, [])
+    fetchReactionRoles();
+  }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true)
-    fetchReactionRoles()
-  }
+    setRefreshing(true);
+    fetchReactionRoles();
+  };
 
   const handleDeleteReactionRole = async (reactionRoleId: string) => {
     try {
-      const supabase = createClient()
+      const supabase = createClient();
       if (!supabase) {
-        toast.error("Supabase client not available")
-        return
+        toast.error("Supabase client not available");
+        return;
       }
 
-      const { error } = await supabase.from("reaction_roles").delete().eq("id", reactionRoleId)
+      const { error } = await supabase
+        .from("reaction_roles")
+        .delete()
+        .eq("id", reactionRoleId);
 
       if (error) {
-        console.error("Error deleting reaction role:", error)
-        toast.error("Failed to delete reaction role")
-        return
+        console.error("Error deleting reaction role:", error);
+        toast.error("Failed to delete reaction role");
+        return;
       }
 
-      toast.success("Reaction role deleted successfully")
-      fetchReactionRoles()
+      toast.success("Reaction role deleted successfully");
+      fetchReactionRoles();
     } catch (error) {
-      console.error("Error deleting reaction role:", error)
-      toast.error("Failed to delete reaction role")
+      console.error("Error deleting reaction role:", error);
+      toast.error("Failed to delete reaction role");
     }
-  }
+  };
 
   const filteredReactionRoles = reactionRoles.filter(
     (reactionRole) =>
       reactionRole.emoji.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reactionRole.role_id.includes(searchTerm) ||
       reactionRole.channel_id.includes(searchTerm) ||
-      reactionRole.message_id.includes(searchTerm),
-  )
+      reactionRole.message_id.includes(searchTerm)
+  );
 
   if (loading) {
     return (
@@ -101,7 +126,7 @@ export function ReactionRolesTable() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -121,7 +146,9 @@ export function ReactionRolesTable() {
             disabled={refreshing}
             className="border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/10 bg-transparent"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -141,10 +168,14 @@ export function ReactionRolesTable() {
         {filteredReactionRoles.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-emerald-200/60 mb-2">
-              {searchTerm ? "No reaction roles found matching your search." : "No reaction roles found."}
+              {searchTerm
+                ? "No reaction roles found matching your search."
+                : "No reaction roles found."}
             </p>
             {!searchTerm && (
-              <p className="text-sm text-emerald-300/40">Reaction roles will appear here when created.</p>
+              <p className="text-sm text-emerald-300/40">
+                Reaction roles will appear here when created.
+              </p>
             )}
           </div>
         ) : (
@@ -157,12 +188,17 @@ export function ReactionRolesTable() {
                 <TableHead className="text-emerald-200">Message ID</TableHead>
                 <TableHead className="text-emerald-200">Guild ID</TableHead>
                 <TableHead className="text-emerald-200">Created</TableHead>
-                <TableHead className="text-emerald-200 text-right">Actions</TableHead>
+                <TableHead className="text-emerald-200 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredReactionRoles.map((reactionRole) => (
-                <TableRow key={reactionRole.id} className="border-emerald-400/20 hover:bg-white/5">
+                <TableRow
+                  key={reactionRole.id}
+                  className="border-emerald-400/20 hover:bg-white/5"
+                >
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Smile className="w-4 h-4 text-emerald-400/60" />
@@ -172,28 +208,42 @@ export function ReactionRolesTable() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-emerald-400/60" />
-                      <p className="font-medium text-white font-mono text-sm">{reactionRole.role_id}</p>
+                      <p className="font-medium text-white font-mono text-sm">
+                        {reactionRole.role_id}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Hash className="w-4 h-4 text-emerald-400/60" />
-                      <p className="font-medium text-white font-mono text-sm">{reactionRole.channel_id}</p>
+                      <p className="font-medium text-white font-mono text-sm">
+                        {reactionRole.channel_id}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="font-mono text-emerald-200/80 text-sm">{reactionRole.message_id}</p>
+                    <p className="font-mono text-emerald-200/80 text-sm">
+                      {reactionRole.message_id}
+                    </p>
                   </TableCell>
                   <TableCell>
-                    <p className="font-mono text-emerald-200/80 text-sm">{reactionRole.guild_id}</p>
+                    <p className="font-mono text-emerald-200/80 text-sm">
+                      {reactionRole.guild_id}
+                    </p>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 text-emerald-200/80">
                       <Calendar className="w-4 h-4" />
                       <div>
-                        <p className="text-sm">{new Date(reactionRole.created_at).toLocaleDateString()}</p>
+                        <p className="text-sm">
+                          {new Date(
+                            reactionRole.created_at
+                          ).toLocaleDateString()}
+                        </p>
                         <p className="text-xs text-emerald-200/60">
-                          {new Date(reactionRole.created_at).toLocaleTimeString()}
+                          {new Date(
+                            reactionRole.created_at
+                          ).toLocaleTimeString()}
                         </p>
                       </div>
                     </div>
@@ -216,5 +266,5 @@ export function ReactionRolesTable() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
