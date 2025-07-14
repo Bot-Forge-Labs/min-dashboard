@@ -366,6 +366,8 @@ export type Database = {
           last_used: string | null
           updated_at: string | null
           usage_count: number | null
+          cooldown_seconds: number | null
+          permissions: string[] | null;
         }
         Insert: {
           command_name: string
@@ -376,6 +378,8 @@ export type Database = {
           last_used?: string | null
           updated_at?: string | null
           usage_count?: number | null
+          cooldown_seconds?: number | null
+          permissions?: string[] | null;
         }
         Update: {
           command_name?: string
@@ -386,6 +390,8 @@ export type Database = {
           last_used?: string | null
           updated_at?: string | null
           usage_count?: number | null
+          cooldown_seconds?: number | null
+          permissions?: string[] | null;
         }
         Relationships: []
       }
