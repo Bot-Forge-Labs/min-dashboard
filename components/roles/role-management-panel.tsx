@@ -30,7 +30,9 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/roles?guild_id=${guildId}`);
+      // Use environment variable for min-api base URL
+      const apiUrl = process.env.DASHBOARD_API_URL || "https://min-bot.api.sogki.dev/";
+      const response = await fetch(`${apiUrl}/api/roles?guild_id=${guildId}`);
       const data = await response.json();
 
       if (!response.ok) {

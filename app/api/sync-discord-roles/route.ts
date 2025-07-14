@@ -13,6 +13,14 @@ interface DiscordRole {
   mentionable: boolean;
 }
 
+// Optional: Define UserRole interface to match user_roles schema
+interface UserRole {
+  user_id: string;
+  role_id: string;
+  assigned_at?: string | null;
+  assigned_by?: string | null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
