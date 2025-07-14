@@ -29,6 +29,7 @@ interface Role {
 interface Guild {
   guild_id: string
   guild_name?: string
+  name?: string
 }
 
 export function RoleManagementPanel() {
@@ -64,7 +65,19 @@ export function RoleManagementPanel() {
         return
       }
 
-      const { data, error } = await supabase.from("guild_settings").select("guild_id, guild_name")
+      // Try guild_settings first, then guilds table
+      let { data, error } = await supabase.from("guild_settings").select("guild_id, guild_name")
+
+      if (error || !data || data.length === 0) {
+        // Fallback to guilds table
+        const result = await supabase.from("guilds").select("guild_id, name")
+        data =
+          result.data?.map((guild) => ({
+            guild_id: guild.guild_id,
+            guild_name: guild.name,
+          })) || []
+        error = result.error
+      }
 
       if (error) {
         console.error("Error fetching guilds:", error)
@@ -72,6 +85,7 @@ export function RoleManagementPanel() {
         return
       }
 
+      console.log("Fetched guilds:", data)
       setGuilds(data || [])
       if (data && data.length > 0) {
         setSelectedGuild(data[0].guild_id)
@@ -92,6 +106,8 @@ export function RoleManagementPanel() {
         return
       }
 
+      console.log("Fetching roles for guild:", selectedGuild)
+
       const { data, error } = await supabase
         .from("roles")
         .select("*")
@@ -104,6 +120,7 @@ export function RoleManagementPanel() {
         return
       }
 
+      console.log("Fetched roles:", data)
       setRoles(data || [])
     } catch (error) {
       console.error("Error fetching roles:", error)
@@ -134,9 +151,9 @@ export function RoleManagementPanel() {
       console.log("Response status:", response.status)
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("API Error:", errorText)
-        throw new Error(`HTTP ${response.status}: ${errorText}`)
+        const errorData = await response.json()
+        console.error("API Error:", errorData)
+        throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
       const result = await response.json()
@@ -393,7 +410,7 @@ export function RoleManagementPanel() {
                     value={guild.guild_id}
                     className="text-white hover:bg-emerald-600/20"
                   >
-                    {guild.guild_name || guild.guild_id}
+                    {guild.guild_name || guild.name || guild.guild_id}
                   </SelectItem>
                 ))}
               </SelectContent>
