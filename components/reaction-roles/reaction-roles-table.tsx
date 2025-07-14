@@ -235,16 +235,22 @@ export function ReactionRolesTable() {
                     <div className="flex items-center gap-2 text-emerald-200/80">
                       <Calendar className="w-4 h-4" />
                       <div>
-                        <p className="text-sm">
-                          {new Date(
-                            reactionRole.created_at
-                          ).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-emerald-200/60">
-                          {new Date(
-                            reactionRole.created_at
-                          ).toLocaleTimeString()}
-                        </p>
+                        {reactionRole.created_at ? (
+                          <>
+                            <p className="text-sm">
+                              {new Date(
+                                reactionRole.created_at
+                              ).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-emerald-200/60">
+                              {new Date(
+                                reactionRole.created_at
+                              ).toLocaleTimeString()}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-emerald-200/60">No date</p>
+                        )}
                       </div>
                     </div>
                   </TableCell>

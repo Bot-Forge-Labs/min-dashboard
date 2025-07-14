@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
@@ -400,19 +398,19 @@ export type Database = {
           economy_enabled: boolean | null
           guild_id: string
           guild_name: string | null
-          join_leave_channel_id: number | null
+          join_leave_channel_id: string | null
           leave_message: string | null
           level_up_channel: string | null
           level_up_message: string | null
           leveling_system: boolean | null
           logging_enabled: boolean | null
           maintenance_mode: boolean | null
-          mod_log_channel: number | null
+          mod_log_channel: string | null
           music_enabled: boolean | null
-          muted_role_id: number | null
+          muted_role_id: string | null
           prefix: string | null
-          staff_log_channel_id: number | null
-          ticket_channel_id: number | null
+          staff_log_channel_id: string | null
+          ticket_channel_id: string | null
           ticket_system: boolean | null
           updated_at: string | null
           welcome_channel_id: string | null
@@ -426,19 +424,19 @@ export type Database = {
           economy_enabled?: boolean | null
           guild_id: string
           guild_name?: string | null
-          join_leave_channel_id?: number | null
+          join_leave_channel_id?: string | null
           leave_message?: string | null
           level_up_channel?: string | null
           level_up_message?: string | null
           leveling_system?: boolean | null
           logging_enabled?: boolean | null
           maintenance_mode?: boolean | null
-          mod_log_channel?: number | null
+          mod_log_channel?: string | null
           music_enabled?: boolean | null
-          muted_role_id?: number | null
+          muted_role_id?: string | null
           prefix?: string | null
-          staff_log_channel_id?: number | null
-          ticket_channel_id?: number | null
+          staff_log_channel_id?: string | null
+          ticket_channel_id?: string | null
           ticket_system?: boolean | null
           updated_at?: string | null
           welcome_channel_id?: string | null
@@ -452,19 +450,19 @@ export type Database = {
           economy_enabled?: boolean | null
           guild_id?: string
           guild_name?: string | null
-          join_leave_channel_id?: number | null
+          join_leave_channel_id?: string | null
           leave_message?: string | null
           level_up_channel?: string | null
           level_up_message?: string | null
           leveling_system?: boolean | null
           logging_enabled?: boolean | null
           maintenance_mode?: boolean | null
-          mod_log_channel?: number | null
+          mod_log_channel?: string | null
           music_enabled?: boolean | null
-          muted_role_id?: number | null
+          muted_role_id?: string | null
           prefix?: string | null
-          staff_log_channel_id?: number | null
-          ticket_channel_id?: number | null
+          staff_log_channel_id?: string | null
+          ticket_channel_id?: string | null
           ticket_system?: boolean | null
           updated_at?: string | null
           welcome_channel_id?: string | null
@@ -487,7 +485,6 @@ export type Database = {
           features: string[] | null
           guild_id: string
           icon: string | null
-          id: string
           joined_at: string | null
           large: boolean | null
           max_members: number | null
@@ -515,6 +512,7 @@ export type Database = {
           verification_level: number | null
           widget_channel_id: string | null
           widget_enabled: boolean | null
+          status: string | null
         }
         Insert: {
           afk_channel_id?: string | null
@@ -530,7 +528,6 @@ export type Database = {
           features?: string[] | null
           guild_id: string
           icon?: string | null
-          id?: string
           joined_at?: string | null
           large?: boolean | null
           max_members?: number | null
@@ -558,6 +555,7 @@ export type Database = {
           verification_level?: number | null
           widget_channel_id?: string | null
           widget_enabled?: boolean | null
+          status?: string | null
         }
         Update: {
           afk_channel_id?: string | null
@@ -573,7 +571,6 @@ export type Database = {
           features?: string[] | null
           guild_id?: string
           icon?: string | null
-          id?: string
           joined_at?: string | null
           large?: boolean | null
           max_members?: number | null
@@ -601,6 +598,7 @@ export type Database = {
           verification_level?: number | null
           widget_channel_id?: string | null
           widget_enabled?: boolean | null
+          status?: string | null
         }
         Relationships: []
       }
@@ -649,8 +647,9 @@ export type Database = {
       punishments: {
         Row: {
           active: boolean | null
-          command_name: string
+          command_name: string | null
           expires_at: string | null
+          guild_id: string
           id: number
           issued_at: string | null
           moderator_id: string
@@ -659,8 +658,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
-          command_name: string
+          command_name?: string | null
           expires_at?: string | null
+          guild_id: string
           id?: number
           issued_at?: string | null
           moderator_id: string
@@ -669,8 +669,9 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
-          command_name?: string
+          command_name?: string | null
           expires_at?: string | null
+          guild_id?: string
           id?: number
           issued_at?: string | null
           moderator_id?: string
@@ -779,7 +780,7 @@ export type Database = {
           managed: boolean | null
           mentionable: boolean | null
           name: string | null
-          permissions: string | null
+          permissions: number | null
           position: number | null
           role_id: string
           updated_at: string | null
@@ -792,7 +793,7 @@ export type Database = {
           managed?: boolean | null
           mentionable?: boolean | null
           name?: string | null
-          permissions?: string | null
+          permissions?: number | null
           position?: number | null
           role_id: string
           updated_at?: string | null
@@ -805,7 +806,7 @@ export type Database = {
           managed?: boolean | null
           mentionable?: boolean | null
           name?: string | null
-          permissions?: string | null
+          permissions?: number | null
           position?: number | null
           role_id?: string
           updated_at?: string | null
@@ -836,6 +837,69 @@ export type Database = {
           id?: string
           role_id?: string
           role_name?: string
+        }
+        Relationships: []
+      }
+      subcommands: {
+        Row: {
+          command_name: string
+          name: string
+          description: string
+        }
+        Insert: {
+          command_name: string
+          name: string
+          description: string
+        }
+        Update: {
+          command_name?: string
+          name?: string
+          description?: string
+        }
+        Relationships: []
+      }
+      user_guilds: {
+        Row: {
+          user_id: string
+          guild_id: string
+          nickname: string | null
+          roles: string[] | null
+          joined_at: string | null
+          premium_since: string | null
+          deaf: boolean | null
+          mute: boolean | null
+          pending: boolean | null
+          permissions: string[] | null
+          communication_disabled_until: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          user_id: string
+          guild_id: string
+          nickname?: string | null
+          roles?: string[] | null
+          joined_at?: string | null
+          premium_since?: string | null
+          deaf?: boolean | null
+          mute?: boolean | null
+          pending?: boolean | null
+          permissions?: string[] | null
+          communication_disabled_until?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          guild_id?: string
+          nickname?: string | null
+          roles?: string[] | null
+          joined_at?: string | null
+          premium_since?: string | null
+          deaf?: boolean | null
+          mute?: boolean | null
+          pending?: boolean | null
+          permissions?: string[] | null
+          communication_disabled_until?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -878,6 +942,7 @@ export type Database = {
         Row: {
           assigned_at: string | null
           assigned_by: string
+          guild_id: string
           id: string
           role_id: string
           user_id: string
@@ -885,6 +950,7 @@ export type Database = {
         Insert: {
           assigned_at?: string | null
           assigned_by: string
+          guild_id: string
           id?: string
           role_id: string
           user_id: string
@@ -892,6 +958,7 @@ export type Database = {
         Update: {
           assigned_at?: string | null
           assigned_by?: string
+          guild_id?: string
           id?: string
           role_id?: string
           user_id?: string
@@ -936,6 +1003,8 @@ export type Database = {
           user_id: string | null
           username: string
           xp: number | null
+          banner: string | null 
+          message_count: number | null
         }
         Insert: {
           avatar?: string | null
@@ -959,6 +1028,8 @@ export type Database = {
           user_id?: string | null
           username: string
           xp?: number | null
+          banner?: string | null 
+          message_count?: number | null
         }
         Update: {
           avatar?: string | null
@@ -982,6 +1053,8 @@ export type Database = {
           user_id?: string | null
           username?: string
           xp?: number | null
+          banner?: string | null
+          message_count?: number | null
         }
         Relationships: []
       }

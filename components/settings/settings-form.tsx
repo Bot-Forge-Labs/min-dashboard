@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   username: string;
   discriminator: string;
@@ -115,16 +115,16 @@ export function SettingsForm() {
         .from("users")
         .select(
           `
-          *,
-          user_roles (
-            roles (
-              id,
-              name,
-              color,
-              position
-            )
+        *,
+        user_roles (
+          roles (
+            id,
+            name,
+            color,
+            position
           )
-        `
+        )
+      `
         )
         .eq("id", user.id)
         .single();
@@ -142,10 +142,10 @@ export function SettingsForm() {
           .from("user_messages")
           .select(
             `
-            channel_id,
-            channels (name),
-            count
-          `
+          channel_id,
+          channels (name),
+          count
+        `
           )
           .eq("user_id", user.id)
           .order("count", { ascending: false })
@@ -153,27 +153,32 @@ export function SettingsForm() {
 
         setUserProfile({
           id: userData.id,
-          username: userData.username,
-          discriminator: userData.discriminator || "0000",
+          username: userData.username ?? "Unknown User",
+          discriminator: userData.discriminator ?? "0000",
           avatar:
-            userData.avatar_url ||
+            userData.avatar ??
             `https://cdn.discordapp.com/embed/avatars/${Math.floor(
               Math.random() * 6
             )}.png`,
-          banner: userData.banner_url,
-          roles: userData.user_roles?.map((ur: any) => ur.roles) || [],
-          messageCount: userData.message_count || 0,
-          joinedAt: userData.joined_at,
-          lastActive: userData.last_active || new Date().toISOString(),
+          banner: userData.banner ?? undefined,
+          roles: userData.user_roles?.map((ur: any) => ur.roles) ?? [],
+          messageCount: userData.message_count ?? 0,
+          joinedAt: userData.joined_at ?? new Date().toISOString(),
+          lastActive: userData.last_active ?? new Date().toISOString(),
           channelActivity:
             channelData?.map((ch: any) => ({
               channelId: ch.channel_id,
-              channelName: ch.channels?.name || "Unknown Channel",
+              channelName: ch.channels?.name ?? "Unknown Channel",
               messageCount: ch.count,
-            })) || [],
-          status: userData.status || "offline",
-          level: userData.level || 1,
-          xp: userData.xp || 0,
+            })) ?? [],
+          status:
+            userData.status === "online" ||
+            userData.status === "idle" ||
+            userData.status === "dnd"
+              ? userData.status
+              : "offline",
+          level: userData.level ?? 1,
+          xp: userData.xp ?? 0,
         });
       }
     } catch (error) {

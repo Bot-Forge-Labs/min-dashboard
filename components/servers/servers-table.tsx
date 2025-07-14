@@ -82,7 +82,7 @@ export function ServersTable() {
     server.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusColor = (status?: string) => {
+  const getStatusColor = (status?: string | null | undefined) => {
     switch (status) {
       case "active":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
@@ -195,7 +195,9 @@ export function ServersTable() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-emerald-200/80">
-                    {new Date(server.created_at).toLocaleDateString()}
+                    {server.created_at
+                      ? new Date(server.created_at).toLocaleDateString()
+                      : "N/A"}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

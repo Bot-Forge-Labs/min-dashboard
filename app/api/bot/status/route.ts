@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       result = await supabase
         .from("bot_status")
         .insert({
-          id: 1,
+          id: "1",
           status: status || "online",
           activity_type: activity_type || "playing",
           activity_name: activity_name || "with Discord",

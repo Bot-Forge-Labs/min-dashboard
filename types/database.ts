@@ -1,39 +1,25 @@
-import { Tables } from "./database.types";
+import { Database } from "./database.types";
 
-export type Guild = Tables<"guilds">;
-
-export type GuildSettings = Tables<"guild_settings">;
-
-export type User = Tables<"users">;
-
-export type Command = Tables<"commands">;
-
-export type ModLog = Tables<"mod_logs">;
-
-export type Punishment = Tables<"punishments">;
-
-export type Giveaway = Tables<"giveaways">;
-
-export type GiveawayWinner = Tables<"giveaway_winners">;
-
-export type Announcement = Tables<"announcements">;
-
-export type ReactionRoleEmbed = Tables<"reaction_role_embeds">;
-
-export type ReactionRole = Tables<"reaction_roles">;
-
-export type Role = Tables<"roles">;
-
-export type StaffRole = Tables<"staff_roles">;
-
-export type UserRole = Tables<"user_roles">;
-
-export interface DashboardStats {
-  total_servers: number;
-  total_users: number;
-  bot_uptime: number;
-  commands_per_day: number;
-  active_giveaways: number;
-  mod_actions_week: number;
-  announcements_month: number;
-}
+export type Guild = Database["public"]["Tables"]["guilds"]["Row"];
+export type GuildSettings = Database["public"]["Tables"]["guild_settings"]["Row"];
+export type User = Database["public"]["Tables"]["users"]["Row"];
+export type Command = Database["public"]["Tables"]["commands"]["Row"];
+export type ModLog = Database["public"]["Views"]["mod_logs_with_usernames"]["Row"];
+export type Punishment = Database["public"]["Tables"]["punishments"]["Row"];
+export type Giveaway = Database["public"]["Tables"]["giveaways"]["Row"];
+export type GiveawayWinner = Database["public"]["Tables"]["giveaway_winners"]["Row"];
+export type Announcement = Database["public"]["Tables"]["announcements"]["Row"];
+export type ReactionRoleEmbed = Database["public"]["Tables"]["reaction_role_embeds"]["Row"];
+export type ReactionRole = Database["public"]["Tables"]["reaction_roles"]["Row"];
+export type Role = Database["public"]["Tables"]["roles"]["Row"];
+export type StaffRole = Database["public"]["Tables"]["staff_roles"]["Row"];
+export type UserRole = Database["public"]["Tables"]["user_roles"]["Row"];
+export type UserGuild = Database["public"]["Tables"]["user_guilds"]["Row"];
+export type SubCommand = Database["public"]["Tables"]["subcommands"]["Row"];
+export type AnalyticsEvent = Database["public"]["Tables"]["analytics_events"]["Row"];
+export type BotSettings = Database["public"]["Tables"]["bot_settings"]["Row"];
+export type BotStatus = Database["public"]["Tables"]["bot_status"]["Row"];
+export type Channel = Database["public"]["Tables"]["channels"]["Row"];
+export type CommandUsageLog = Database["public"]["Tables"]["command_usage_logs"]["Row"];
+export type GuildCommand = Database["public"]["Tables"]["guild_commands"]["Row"];
+export type UserMessage = Database["public"]["Tables"]["user_messages"]["Row"];
