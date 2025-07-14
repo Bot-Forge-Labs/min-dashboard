@@ -220,22 +220,35 @@ export function RoleManagementPanel() {
     }
   }
 
-  const getRoleColor = (color: string) => {
-    if (!color || color === "0") return "#99AAB5"
-    if (color.startsWith("#")) return color
-    return `#${color.padStart(6, "0")}`
+  const getRoleColor = (color: string | number) => {
+    // Handle null, undefined, or 0 values
+    if (!color || color === "0" || color === 0) return "#99AAB5"
+
+    // Convert to string if it's a number
+    const colorStr = color.toString()
+
+    // If it already starts with #, return as is
+    if (colorStr.startsWith("#")) return colorStr
+
+    // Otherwise, add # prefix and pad with zeros if needed
+    return `#${colorStr.padStart(6, "0")}`
   }
 
-  const getPermissionBadges = (permissions: string) => {
-    const permissionValue = BigInt(permissions || "0")
-    const badges = []
+  const getPermissionBadges = (permissions: string | number) => {
+    try {
+      const permissionValue = BigInt(permissions || "0")
+      const badges = []
 
-    if (permissionValue & BigInt(8)) badges.push({ label: "Admin", color: "bg-red-500" })
-    if (permissionValue & BigInt(268435456)) badges.push({ label: "Manage Roles", color: "bg-orange-500" })
-    if (permissionValue & BigInt(8192)) badges.push({ label: "Manage Messages", color: "bg-yellow-500" })
-    if (permissionValue & BigInt(1024)) badges.push({ label: "View Channels", color: "bg-blue-500" })
+      if (permissionValue & BigInt(8)) badges.push({ label: "Admin", color: "bg-red-500" })
+      if (permissionValue & BigInt(268435456)) badges.push({ label: "Manage Roles", color: "bg-orange-500" })
+      if (permissionValue & BigInt(8192)) badges.push({ label: "Manage Messages", color: "bg-yellow-500" })
+      if (permissionValue & BigInt(1024)) badges.push({ label: "View Channels", color: "bg-blue-500" })
 
-    return badges.length > 0 ? badges : [{ label: "No Permissions", color: "bg-gray-500" }]
+      return badges.length > 0 ? badges : [{ label: "No Permissions", color: "bg-gray-500" }]
+    } catch (error) {
+      console.error("Error parsing permissions:", error)
+      return [{ label: "Invalid Permissions", color: "bg-gray-500" }]
+    }
   }
 
   if (loading) {
