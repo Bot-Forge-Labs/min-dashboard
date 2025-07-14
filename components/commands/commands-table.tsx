@@ -46,7 +46,7 @@ import type { Command as CommandType } from "@/types/database";
 import { toast } from "sonner";
 
 interface CommandWithSubcommands extends CommandType {
-  subcommands?: Array{
+  subcommands?: Array;
     name: string
     description: string
     usage_count: number
