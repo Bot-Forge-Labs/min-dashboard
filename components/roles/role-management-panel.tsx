@@ -31,7 +31,8 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       setError(null);
 
       // Use environment variable for min-api base URL
-      const apiUrl = process.env.DASHBOARD_API_URL || "https://min-bot.api.sogki.dev/";
+      const apiUrl =
+        process.env.DASHBOARD_API_URL || "https://min-bot.api.sogki.dev/";
       const response = await fetch(`${apiUrl}/api/roles?guild_id=${guildId}`);
       const data = await response.json();
 
@@ -64,11 +65,14 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
         body: JSON.stringify({ guild_id: guildId }),
       });
 
-      const data = await response.json();
-
+      // First check if the response is OK (status 2xx)
       if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`);
+        const errorData = await response.text(); // Get the raw response text (in case it's not JSON)
+        throw new Error(errorData || `HTTP ${response.status}`);
       }
+
+      // If the response is OK, parse the JSON data
+      const data = await response.json();
 
       console.log("Roles synced successfully:", data);
 
@@ -167,7 +171,8 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
               No roles found
             </h3>
             <p className="text-gray-500 mb-4">
-              Click "Sync from Discord" to import roles from your Discord server.
+              Click "Sync from Discord" to import roles from your Discord
+              server.
             </p>
             <Button onClick={syncDiscordRoles} disabled={syncing}>
               <RefreshCw
