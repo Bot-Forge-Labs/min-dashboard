@@ -80,15 +80,15 @@
 
 .dark {
   --background: "bg-gradient-to-br from-slate-800 via-emerald-600 to-green-800";
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(87.945% 0.05277 152.905);
+  --foreground: oklch(98.511% 0.00011 271.152);
+  --card: oklch(76.39% 0.02637 168.177 / 0.192);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(87.198% 0.06021 145.113);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(67.231% 0.04948 164.442);
   --secondary: oklch(83.736% 0.08017 168.357);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: oklch(98.511% 0.00011 271.152 / 0.411);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(82.457% 0.06081 173.445 / 0.541);

@@ -163,18 +163,18 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mb-4 p-3 bg-emerald-300/10 border border-green-200 rounded-md">
+            <p className="text-sm text-emerald-200">{error}</p>
           </div>
         )}
 
         {roles.length === 0 ? (
           <div className="text-center py-8">
-            <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Shield className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
+            <h3 className="text-lg font-medium text-emerald-200 mb-2">
               No roles found
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-gray-200 mb-4">
               Click "Sync from Discord" to import roles from your Discord
               server.
             </p>
