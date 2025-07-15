@@ -63,7 +63,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.DASHBOARD_API_KEY}`, // Replace YOUR_API_KEY with the actual API key or token
+            Authorization: `Bearer ${process.env.BOT_API_KEY}`, // Replace YOUR_API_KEY with the actual API key or token
           },
           body: JSON.stringify({ guild_id: guildId }),
         }
