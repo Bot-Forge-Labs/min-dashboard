@@ -95,10 +95,11 @@ export function SettingsForm() {
     fetchBotSettings();
   }, []);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (retry = false) => {
     try {
       const supabase = createClient();
       if (!supabase) {
+        console.error("Supabase client initialization failed");
         toast.error("Database connection failed");
         setLoading(false);
         return;
@@ -108,13 +109,18 @@ export function SettingsForm() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
+        console.error("No authenticated user found");
         toast.error("User not authenticated");
         setLoading(false);
         return;
       }
 
-      // Fetch user profile from database
-      const { data: userData, error: userError } = await supabase
+      console.log("Fetching user profile for auth.uid():", user.id);
+
+      let userData = null;
+
+      // Try fetching user by discord_id
+      const { data: discordData, error: discordError } = await supabase
         .from("users")
         .select(
           `
@@ -123,7 +129,6 @@ export function SettingsForm() {
           discriminator,
           avatar,
           banner,
-          message_count,
           joined_at,
           last_active,
           status,
@@ -131,98 +136,223 @@ export function SettingsForm() {
           xp
         `
         )
-        .eq("id", user.id)
-        .single();
+        .eq("discord_id", user.id)
+        .maybeSingle();
 
-      if (userError) {
-        console.error("Supabase user fetch error:", userError.message, userError.details);
-        if (userError.code === "PGRST116") {
-          // No user found, try Discord API
-          await fetchDiscordProfile(user.id);
+      if (discordError) {
+        console.error("Supabase discord_id fetch error:", {
+          message: discordError.message,
+          details: discordError.details,
+          code: discordError.code,
+        });
+      } else if (discordData) {
+        userData = discordData;
+      }
+
+      // Fallback to users.id
+      if (!userData) {
+        const { data: idData, error: idError } = await supabase
+          .from("users")
+          .select(
+            `
+            id,
+            username,
+            discriminator,
+            avatar,
+            banner,
+            joined_at,
+          last_active,
+          status,
+          level,
+          xp
+          `
+          )
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (idError) {
+          console.error("Supabase id fetch error:", {
+            message: idError.message,
+            details: idError.details,
+            code: idError.code,
+          });
         } else {
-          toast.error(`Failed to load user profile: ${userError.message}`);
+          userData = idData;
+        }
+      }
+
+      // If no user found, attempt to insert
+      if (!userData) {
+        console.log("No user found, attempting to insert:", {
+          userId: user.id,
+          metadata: user.user_metadata,
+        });
+        const { data: newUser, error: insertError } = await supabase
+          .from("users")
+          .insert({
+            id: user.id,
+            discord_id: user.id,
+            username: user.user_metadata?.username || "Unknown User",
+            discriminator: user.user_metadata?.discriminator || "0000",
+            avatar: user.user_metadata?.avatar_url || null,
+            joined_at: new Date().toISOString(),
+            status: "offline",
+            level: 1,
+            xp: 0,
+          })
+          .select(
+            `
+            id,
+            username,
+            discriminator,
+            avatar,
+            banner,
+            joined_at,
+            last_active,
+            status,
+            level,
+            xp
+          `
+          )
+          .maybeSingle();
+
+        if (insertError) {
+          console.error("Error inserting user:", {
+            message: insertError.message,
+            details: insertError.details,
+            code: insertError.code,
+          });
+          toast.error(`Failed to create user profile: ${insertError.message}`);
+          if (!retry) {
+            console.log("Retrying fetchUserProfile after insertion failure");
+            await fetchUserProfile(true); // Retry once
+          } else {
+            await fetchDiscordProfile(user.id);
+          }
           setLoading(false);
           return;
         }
+        userData = newUser;
       }
 
-      let roles: { role_id: any; name: any; color: any; position: any; }[] = [];
-      if (userData) {
-        // Fetch roles separately to match schema
-        const { data: userRolesData, error: userRolesError } = await supabase
-          .from("user_roles")
-          .select(
-            `
+      if (!userData) {
+        console.error("No user data available after queries and insertion:", {
+          userId: user.id,
+        });
+        await fetchDiscordProfile(user.id);
+        setLoading(false);
+        return;
+      }
+
+      let roles: Array<{
+        role_id: string;
+        name: string;
+        color: string;
+        position: number;
+      }> = [];
+      let messageCount = 0;
+
+      // Fetch roles with enhanced error logging
+      const { data: userRolesData, error: userRolesError, status } = await supabase
+        .from("user_roles")
+        .select(
+          `
+          role_id,
+          roles (
             role_id,
-            roles (
-              role_id,
-              name,
-              color,
-              position
-            )
-          `
+            name,
+            color,
+            position
           )
-          .eq("user_id", user.id);
+        `
+        )
+        .eq("user_id", userData.id);
 
-        if (userRolesError) {
-          console.error("Error fetching user roles:", userRolesError);
-        } else {
-          roles = userRolesData?.map((ur: any) => ({
-            role_id: ur.roles.role_id,
-            name: ur.roles.name,
-            color: ur.roles.color,
-            position: ur.roles.position,
-          })) ?? [];
+      if (userRolesError) {
+        console.error("Error fetching user roles:", {
+          message: userRolesError.message,
+          details: userRolesError.details,
+          code: userRolesError.code,
+          status: status,
+          query: `user_roles?select=role_id,roles(role_id,name,color,position)&user_id=eq.${userData.id}`,
+        });
+        if (status === 400) {
+          console.warn("400 Bad Request - Check foreign key relationship between user_roles and roles");
         }
+      } else {
+        roles = userRolesData?.map((ur: any) => ({
+          role_id: ur.roles?.role_id || ur.role_id || "unknown",
+          name: ur.roles?.name || "Unknown Role",
+          color: ur.roles?.color || "#10b981",
+          position: ur.roles?.position || 0,
+        })) ?? [];
+      }
 
-        // Fetch channel activity
-        const { data: channelData, error: channelError } = await supabase
-          .from("user_messages")
-          .select(
-            `
-            channel_id,
-            channels (name),
-            count
+      // Fetch total message count from user_messages
+      const { data: messageData, error: messageError } = await supabase
+        .from("user_messages")
+        .select("count")
+        .eq("user_id", userData.id);
+
+      if (messageError) {
+        console.error("Error fetching message count:", {
+          message: messageError.message,
+          details: messageError.details,
+          code: messageError.code,
+        });
+      } else {
+        messageCount = messageData?.reduce((sum: number, msg: any) => sum + msg.count, 0) ?? 0;
+      }
+
+      // Fetch channel activity
+      const { data: channelData, error: channelError } = await supabase
+        .from("user_messages")
+        .select(
           `
-          )
-          .eq("user_id", user.id)
-          .order("count", { ascending: false })
-          .limit(5);
+          channel_id,
+          channels (name),
+          count
+        `
+        )
+        .eq("user_id", userData.id)
+        .order("count", { ascending: false })
+        .limit(5);
 
-        if (channelError) {
-          console.error("Error fetching channel activity:", channelError);
-        }
-
-        setUserProfile({
-          id: userData.id,
-          username: userData.username ?? "Unknown User",
-          discriminator: userData.discriminator ?? "0000",
-          avatar:
-            userData.avatar ??
-            `https://cdn.discordapp.com/embed/avatars/${Math.floor(
-              Math.random() * 6
-            )}.png`,
-          banner: userData.banner ?? undefined,
-          roles,
-          messageCount: userData.message_count ?? 0,
-          joinedAt: userData.joined_at ?? new Date().toISOString(),
-          lastActive: userData.last_active ?? new Date().toISOString(),
-          channelActivity:
-            channelData?.map((ch: any) => ({
-              channelId: ch.channel_id,
-              channelName: ch.channels?.name ?? "Unknown Channel",
-              messageCount: ch.count,
-            })) ?? [],
-          status:
-            userData.status === "online" ||
-            userData.status === "idle" ||
-            userData.status === "dnd"
-              ? userData.status
-              : "offline",
-          level: userData.level ?? 1,
-          xp: userData.xp ?? 0,
+      if (channelError) {
+        console.error("Error fetching channel activity:", {
+          message: channelError.message,
+          details: channelError.details,
+          code: channelError.code,
         });
       }
+
+      setUserProfile({
+        id: userData.id,
+        username: userData.username ?? "Unknown User",
+        discriminator: userData.discriminator ?? "0000",
+        avatar:
+          userData.avatar ??
+          `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`,
+        banner: userData.banner ?? undefined,
+        roles,
+        messageCount,
+        joinedAt: userData.joined_at ?? new Date().toISOString(),
+        lastActive: userData.last_active ?? new Date().toISOString(),
+        channelActivity:
+          channelData?.map((ch: any) => ({
+            channelId: ch.channel_id,
+            channelName: ch.channels?.name ?? "Unknown Channel",
+            messageCount: ch.count,
+          })) ?? [],
+        status:
+          userData.status === "online" ||
+          userData.status === "idle" ||
+          userData.status === "dnd"
+            ? userData.status
+            : "offline",
+        level: userData.level ?? 1,
+        xp: userData.xp ?? 0,
+      });
     } catch (error) {
       console.error("Unexpected error fetching user profile:", error);
       toast.error("Unexpected error loading user profile");
@@ -234,12 +364,13 @@ export function SettingsForm() {
 
   const fetchDiscordProfile = async (userId: string) => {
     if (!userId) {
+      console.error("No user ID provided for Discord profile fetch");
       toast.error("No user ID provided for Discord profile fetch");
       setUserProfile({
         id: "unknown",
         username: "Unknown User",
         discriminator: "0000",
-        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png",
+        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets/minbot-icon-transparent.png",
         banner: undefined,
         roles: [],
         messageCount: 0,
@@ -258,24 +389,25 @@ export function SettingsForm() {
           Accept: "application/json",
         },
       });
+      const responseText = await response.text();
+      console.log("Discord API response:", { status: response.status, body: responseText });
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
       }
 
-      const discordUser = await response.json();
+      const discordUser = JSON.parse(responseText);
       if (!discordUser.id) {
         throw new Error("Invalid Discord user data");
       }
 
       setUserProfile({
         id: discordUser.id,
-        username: discordUser.username,
+        username: discordUser.username || "Unknown User",
         discriminator: discordUser.discriminator || "0000",
         avatar: discordUser.avatar
           ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-          : `https://cdn.discordapp.com/embed/avatars/${Math.floor(
-              Math.random() * 6
-            )}.png`,
+          : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`,
         banner: discordUser.banner
           ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.png`
           : undefined,
@@ -295,7 +427,7 @@ export function SettingsForm() {
         id: userId,
         username: "Unknown User",
         discriminator: "0000",
-        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png",
+        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets/minbot-icon-transparent.png",
         banner: undefined,
         roles: [],
         messageCount: 0,
@@ -313,6 +445,7 @@ export function SettingsForm() {
     try {
       const supabase = createClient();
       if (!supabase) {
+        console.error("Supabase client initialization failed");
         toast.error("Database connection failed");
         return;
       }
@@ -323,7 +456,11 @@ export function SettingsForm() {
         .single();
 
       if (error && error.code !== "PGRST116") {
-        console.error("Error fetching bot settings:", error);
+        console.error("Error fetching bot settings:", {
+          message: error.message,
+          details: error.details,
+          code: error.code,
+        });
       } else if (data) {
         setSettings({
           botName: data.bot_name || "Minbot",
@@ -351,6 +488,7 @@ export function SettingsForm() {
     try {
       const supabase = createClient();
       if (!supabase) {
+        console.error("Supabase client initialization failed");
         toast.error("Database connection failed");
         return;
       }
@@ -372,7 +510,11 @@ export function SettingsForm() {
       });
 
       if (error) {
-        console.error("Error saving settings:", error);
+        console.error("Error saving settings:", {
+          message: error.message,
+          details: error.details,
+          code: error.code,
+        });
         toast.error("Failed to save settings");
         return;
       }
@@ -493,7 +635,7 @@ export function SettingsForm() {
                     <div className="absolute -bottom-8 left-6">
                       <Avatar className="h-16 w-16 ring-2 ring-emerald-400/20">
                         <AvatarImage
-                          src={userProfile.avatar || "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"}
+                          src={userProfile.avatar || "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets/minbot-icon-transparent.png"}
                           alt={userProfile.username}
                         />
                         <AvatarFallback className="bg-emerald-600 text-white">
@@ -519,8 +661,8 @@ export function SettingsForm() {
                           User ID: {userProfile.id}
                         </p>
                         <p className="text-emerald-300/60 text-sm">
-                          Last active:{" "}
-                          {formatDistanceToNow(
+                          Last active:{" "
+                          }{formatDistanceToNow(
                             new Date(userProfile.lastActive),
                             { addSuffix: true }
                           )}
