@@ -27,7 +27,17 @@ import {
   Trash2,
   Loader2,
   RefreshCw,
+  Plus,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import type { ReactionRole } from "@/types/database";
 import { toast } from "sonner";
@@ -151,6 +161,13 @@ export function ReactionRolesTable() {
             />
             Refresh
           </Button>
+
+          {/* Needs Implementation */}
+
+          {/* <Button className="bg-linear-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white/80">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Reaction Roles
+          </Button> */} 
         </div>
         <div className="flex items-center gap-4 pt-4">
           <div className="relative flex-1 max-w-sm">

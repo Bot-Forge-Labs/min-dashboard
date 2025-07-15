@@ -10,10 +10,10 @@ export default function ReactionRolesPage() {
           <h1 className="text-3xl font-bold text-white">Reaction Roles</h1>
           <p className="text-slate-400">Set up reaction roles for your servers.</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        {/* <Button className="bg-purple-600 hover:bg-purple-700">
           <Plus className="w-4 h-4 mr-2" />
           Create Reaction Role
-        </Button>
+        </Button> */}
       </div>
 
       <ReactionRolesTable />

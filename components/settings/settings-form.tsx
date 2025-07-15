@@ -30,6 +30,7 @@ import {
   Activity,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface UserProfile {
   id: string;
@@ -38,7 +39,7 @@ export interface UserProfile {
   avatar: string;
   banner?: string;
   roles: Array<{
-    id: string;
+    role_id: string;
     name: string;
     color: string;
     position: number;
@@ -71,6 +72,7 @@ interface BotSettings {
 }
 
 export function SettingsForm() {
+  const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<BotSettings>({
     botName: "Minbot",
@@ -98,15 +100,16 @@ export function SettingsForm() {
       const supabase = createClient();
       if (!supabase) {
         toast.error("Database connection failed");
+        setLoading(false);
         return;
       }
 
-      // Get current user from auth
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
         toast.error("User not authenticated");
+        setLoading(false);
         return;
       }
 
@@ -115,41 +118,80 @@ export function SettingsForm() {
         .from("users")
         .select(
           `
-        *,
-        user_roles (
-          roles (
-            id,
-            name,
-            color,
-            position
-          )
-        )
-      `
+          id,
+          username,
+          discriminator,
+          avatar,
+          banner,
+          message_count,
+          joined_at,
+          last_active,
+          status,
+          level,
+          xp
+        `
         )
         .eq("id", user.id)
         .single();
 
-      if (userError && userError.code !== "PGRST116") {
-        console.error("Error fetching user profile:", userError);
-        // Use Discord API as fallback
-        await fetchDiscordProfile(user.id);
-        return;
+      if (userError) {
+        console.error("Supabase user fetch error:", userError.message, userError.details);
+        if (userError.code === "PGRST116") {
+          // No user found, try Discord API
+          await fetchDiscordProfile(user.id);
+        } else {
+          toast.error(`Failed to load user profile: ${userError.message}`);
+          setLoading(false);
+          return;
+        }
       }
 
+      let roles: { role_id: any; name: any; color: any; position: any; }[] = [];
       if (userData) {
+        // Fetch roles separately to match schema
+        const { data: userRolesData, error: userRolesError } = await supabase
+          .from("user_roles")
+          .select(
+            `
+            role_id,
+            roles (
+              role_id,
+              name,
+              color,
+              position
+            )
+          `
+          )
+          .eq("user_id", user.id);
+
+        if (userRolesError) {
+          console.error("Error fetching user roles:", userRolesError);
+        } else {
+          roles = userRolesData?.map((ur: any) => ({
+            role_id: ur.roles.role_id,
+            name: ur.roles.name,
+            color: ur.roles.color,
+            position: ur.roles.position,
+          })) ?? [];
+        }
+
         // Fetch channel activity
-        const { data: channelData } = await supabase
+        const { data: channelData, error: channelError } = await supabase
           .from("user_messages")
           .select(
             `
-          channel_id,
-          channels (name),
-          count
-        `
+            channel_id,
+            channels (name),
+            count
+          `
           )
           .eq("user_id", user.id)
           .order("count", { ascending: false })
           .limit(5);
+
+        if (channelError) {
+          console.error("Error fetching channel activity:", channelError);
+        }
 
         setUserProfile({
           id: userData.id,
@@ -161,7 +203,7 @@ export function SettingsForm() {
               Math.random() * 6
             )}.png`,
           banner: userData.banner ?? undefined,
-          roles: userData.user_roles?.map((ur: any) => ur.roles) ?? [],
+          roles,
           messageCount: userData.message_count ?? 0,
           joinedAt: userData.joined_at ?? new Date().toISOString(),
           lastActive: userData.last_active ?? new Date().toISOString(),
@@ -182,21 +224,53 @@ export function SettingsForm() {
         });
       }
     } catch (error) {
-      console.error("Error fetching user profile:", error);
-      toast.error("Failed to load user profile");
+      console.error("Unexpected error fetching user profile:", error);
+      toast.error("Unexpected error loading user profile");
+      await fetchDiscordProfile(user?.id || "");
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchDiscordProfile = async (userId: string) => {
+    if (!userId) {
+      toast.error("No user ID provided for Discord profile fetch");
+      setUserProfile({
+        id: "unknown",
+        username: "Unknown User",
+        discriminator: "0000",
+        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png",
+        banner: undefined,
+        roles: [],
+        messageCount: 0,
+        joinedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+        channelActivity: [],
+        status: "offline",
+        level: 1,
+        xp: 0,
+      });
+      return;
+    }
     try {
-      const response = await fetch(`/api/discord/user/${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch Discord profile");
+      const response = await fetch(`/api/discord/user/${userId}`, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const discordUser = await response.json();
+      if (!discordUser.id) {
+        throw new Error("Invalid Discord user data");
+      }
+
       setUserProfile({
         id: discordUser.id,
         username: discordUser.username,
-        discriminator: discordUser.discriminator,
+        discriminator: discordUser.discriminator || "0000",
         avatar: discordUser.avatar
           ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
           : `https://cdn.discordapp.com/embed/avatars/${Math.floor(
@@ -216,6 +290,22 @@ export function SettingsForm() {
       });
     } catch (error) {
       console.error("Error fetching Discord profile:", error);
+      toast.error("Failed to load Discord profile");
+      setUserProfile({
+        id: userId,
+        username: "Unknown User",
+        discriminator: "0000",
+        avatar: "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png",
+        banner: undefined,
+        roles: [],
+        messageCount: 0,
+        joinedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+        channelActivity: [],
+        status: "offline",
+        level: 1,
+        xp: 0,
+      });
     }
   };
 
@@ -287,7 +377,6 @@ export function SettingsForm() {
         return;
       }
 
-      // Apply settings to Discord bot via API
       await fetch("/api/bot/update-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -402,22 +491,20 @@ export function SettingsForm() {
                       }}
                     />
                     <div className="absolute -bottom-8 left-6">
-                      <div className="relative">
-                        <Avatar className="w-16 h-16 border-4 border-white/20">
-                          <AvatarImage
-                            src={userProfile.avatar || "/placeholder.svg"}
-                            alt={userProfile.username}
-                          />
-                          <AvatarFallback className="bg-emerald-600 text-white">
-                            {userProfile.username.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div
-                          className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${getStatusColor(
-                            userProfile.status
-                          )}`}
+                      <Avatar className="h-16 w-16 ring-2 ring-emerald-400/20">
+                        <AvatarImage
+                          src={userProfile.avatar || "https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"}
+                          alt={userProfile.username}
                         />
-                      </div>
+                        <AvatarFallback className="bg-emerald-600 text-white">
+                          {userProfile.username?.charAt(0) || user?.email?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div
+                        className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${getStatusColor(
+                          userProfile.status
+                        )}`}
+                      />
                     </div>
                   </div>
 
@@ -521,7 +608,7 @@ export function SettingsForm() {
                           .sort((a, b) => b.position - a.position)
                           .map((role) => (
                             <Badge
-                              key={role.id}
+                              key={role.role_id}
                               variant="outline"
                               className="border-emerald-500/30"
                               style={{
@@ -569,7 +656,8 @@ export function SettingsForm() {
                                       Math.max(
                                         ...userProfile.channelActivity.map(
                                           (c) => c.messageCount
-                                        )
+                                        ),
+                                        1 // Avoid division by zero
                                       )) *
                                       100,
                                     100
@@ -656,7 +744,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("autoModeration", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -673,7 +761,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("welcomeMessages", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -688,7 +776,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("loggingEnabled", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -703,7 +791,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("antiSpam", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -718,7 +806,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("autoRole", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -735,7 +823,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("levelingSystem", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -750,7 +838,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("musicEnabled", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -765,7 +853,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("economyEnabled", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -780,7 +868,7 @@ export function SettingsForm() {
                       onCheckedChange={(checked) =>
                         updateSetting("ticketSystem", checked)
                       }
-                      className="data-[state=checked]:bg-emerald-600"
+                      className="data-[state=checked]:bg-emerald-800"
                     />
                   </div>
                 </div>
@@ -804,7 +892,7 @@ export function SettingsForm() {
                     onCheckedChange={(checked) =>
                       updateSetting("maintenanceMode", checked)
                     }
-                    className="data-[state=checked]:bg-red-600"
+                    className="data-[state=checked]:bg-emerald-800"
                   />
                 </div>
               </div>
@@ -813,7 +901,7 @@ export function SettingsForm() {
                 <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500"
+                  className="bg-gradient-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white/80"
                 >
                   {saving ? (
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

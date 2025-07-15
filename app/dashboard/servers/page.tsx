@@ -12,7 +12,7 @@ export default function ServersPage() {
           </h1>
           <p className="text-emerald-200/80">Manage your Discord servers and their settings.</p>
         </div>
-        <Button className="bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
+        <Button className="bg-linear-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white/80">
           <Plus className="w-4 h-4 mr-2" />
           Add Server
         </Button>

@@ -10,10 +10,10 @@ export default function GiveawaysPage() {
           <h1 className="text-3xl font-bold text-white">Giveaways</h1>
           <p className="text-slate-400">Create and manage server giveaways.</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        {/* <Button className="bg-purple-600 hover:bg-purple-700">
           <Plus className="w-4 h-4 mr-2" />
           Create Giveaway
-        </Button>
+        </Button> */}
       </div>
 
       <GiveawaysTable />

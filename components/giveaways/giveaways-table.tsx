@@ -286,7 +286,7 @@ export function GiveawaysTable() {
               onOpenChange={setIsCreateDialogOpen}
             >
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500">
+                <Button className="bg-linear-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white/80">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Giveaway
                 </Button>
