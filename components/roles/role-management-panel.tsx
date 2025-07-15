@@ -57,13 +57,17 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
 
       console.log("Syncing roles for guild:", guildId);
 
-      const response = await fetch("https://min-bot.api.sogki.dev/api/sync-discord-roles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ guild_id: guildId }),
-      });
+      const response = await fetch(
+        "https://min-bot.api.sogki.dev/api/sync-discord-roles",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.DASHBOARD_API_KEY}`, // Replace YOUR_API_KEY with the actual API key or token
+          },
+          body: JSON.stringify({ guild_id: guildId }),
+        }
+      );
 
       // First check if the response is OK (status 2xx)
       if (!response.ok) {
