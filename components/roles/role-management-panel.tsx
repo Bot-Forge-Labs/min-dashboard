@@ -31,43 +31,50 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       console.log("Fetching roles for guild:", guildId);
       const apiUrl =
         process.env.NEXT_PUBLIC_DASHBOARD_API_URL ||
-        "https://min-bot.api.sogki.dev/";
+        "https://<your-service>.onrender.com";
       console.log("Primary API URL:", apiUrl);
 
-      // Try primary API
       const response = await fetch(`${apiUrl}/api/roles?guild_id=${guildId}`, {
         headers: {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
         },
+        signal: AbortSignal.timeout(30000),
       });
       console.log("Primary API response status:", response.status);
       const data = await response.text();
       console.log("Primary API raw response:", data);
-      const parsedData = JSON.parse(data);
       if (!response.ok) {
+        if (data.includes("<!DOCTYPE")) {
+          throw new Error(`Primary API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`);
+        }
+        const parsedData = JSON.parse(data);
         throw new Error(parsedData.error || `HTTP ${response.status}`);
       }
+      const parsedData = JSON.parse(data);
       const roles = Array.isArray(parsedData.roles) ? parsedData.roles : [];
       console.log("Parsed roles from primary API:", roles);
       setRoles(roles);
     } catch (err) {
       console.error("Error fetching roles from primary API:", err);
-      // Fallback to Discord API
       try {
         console.log("Falling back to Discord API for guild:", guildId);
         const response = await fetch("/api/fetch-discord-roles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ guild_id: guildId }),
+          signal: AbortSignal.timeout(30000),
         });
         console.log("Discord API response status:", response.status);
         const data = await response.text();
         console.log("Discord API raw response:", data);
-        const parsedData = JSON.parse(data);
         if (!response.ok) {
-          throw new Error(parsedData.message || `HTTP ${response.status}`);
+          if (data.includes("<!DOCTYPE")) {
+            throw new Error(`Discord API returned HTML (status: ${response.status})`);
+          }
+          const parsedError = JSON.parse(data);
+          throw new Error(parsedError.message || `HTTP ${response.status}`);
         }
-        // Map Discord API response to Role type
+        const parsedData = JSON.parse(data);
         const roles: Role[] = parsedData.map((role: any) => ({
           role_id: role.id,
           name: role.name,
@@ -98,22 +105,23 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       setSyncing(true);
       setError(null);
       console.log("Syncing roles for guild:", guildId);
-
       const response = await fetch("/api/sync-roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guild_id: guildId }),
+        signal: AbortSignal.timeout(30000),
       });
-
       console.log("Sync response status:", response.status);
       const data = await response.text();
       console.log("Sync raw response:", data);
-      const parsedData = JSON.parse(data);
-
       if (!response.ok) {
-        throw new Error(parsedData.error || `HTTP ${response.status}`);
+        if (data.includes("<!DOCTYPE")) {
+          throw new Error(`Sync API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`);
+        }
+        const parsedError = JSON.parse(data);
+        throw new Error(parsedError.error || `HTTP ${response.status}`);
       }
-
+      const parsedData = JSON.parse(data);
       console.log("Roles synced successfully:", parsedData);
       await fetchRoles();
     } catch (err) {
@@ -131,13 +139,12 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
   }, [guildId]);
 
   const getRoleColor = (color?: number): string => {
-    if (!color || color === 0) return "#99AAB5"; // Default Discord gray
+    if (!color || color === 0) return "#99AAB5";
     return `#${color.toString(16).padStart(6, "0")}`;
   };
 
   const formatPermissions = (permissions?: number): string => {
     if (!permissions || permissions === 0) return "No permissions";
-
     const perms = [];
     if (permissions & 0x8) perms.push("Administrator");
     if (permissions & 0x10) perms.push("Manage Channels");
@@ -147,7 +154,6 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
     if (permissions & 0x800) perms.push("Send Messages");
     if (permissions & 0x2000) perms.push("Manage Messages");
     if (permissions & 0x10000000) perms.push("Manage Roles");
-
     return perms.length > 0
       ? perms.slice(0, 3).join(", ") + (perms.length > 3 ? "..." : "")
       : "Custom permissions";
@@ -201,7 +207,6 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
             <p className="text-sm text-emerald-200">{error}</p>
           </div>
         )}
-
         {roles.length === 0 ? (
           <div className="text-center py-8">
             <Shield className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
@@ -209,8 +214,7 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
               No roles found
             </h3>
             <p className="text-gray-200 mb-4">
-              Click "Sync from Discord" to import roles from your Discord
-              server.
+              Click "Sync from Discord" to import roles from your Discord server.
             </p>
             <Button onClick={syncDiscordRoles} disabled={syncing}>
               <RefreshCw
