@@ -45,7 +45,9 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       console.log("Primary API raw response:", data);
       if (!response.ok) {
         if (data.includes("<!DOCTYPE")) {
-          throw new Error(`Primary API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`);
+          throw new Error(
+            `Primary API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`
+          );
         }
         const parsedData = JSON.parse(data);
         throw new Error(parsedData.error || `HTTP ${response.status}`);
@@ -69,7 +71,9 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
         console.log("Discord API raw response:", data);
         if (!response.ok) {
           if (data.includes("<!DOCTYPE")) {
-            throw new Error(`Discord API returned HTML (status: ${response.status})`);
+            throw new Error(
+              `Discord API returned HTML (status: ${response.status})`
+            );
           }
           const parsedError = JSON.parse(data);
           throw new Error(parsedError.message || `HTTP ${response.status}`);
@@ -105,23 +109,54 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
       setSyncing(true);
       setError(null);
       console.log("Syncing roles for guild:", guildId);
+
       const response = await fetch("/api/sync-roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guild_id: guildId }),
         signal: AbortSignal.timeout(30000),
       });
+
       console.log("Sync response status:", response.status);
       const data = await response.text();
       console.log("Sync raw response:", data);
+
       if (!response.ok) {
         if (data.includes("<!DOCTYPE")) {
-          throw new Error(`Sync API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`);
+          throw new Error(
+            `Sync API returned HTML (status: ${response.status}), check DASHBOARD_API_URL`
+          );
         }
-        const parsedError = JSON.parse(data);
+
+        let parsedError: any = {};
+        if (data.trim() !== "") {
+          try {
+            parsedError = JSON.parse(data);
+          } catch (parseErr) {
+            console.error(
+              "Failed to parse error JSON in syncDiscordRoles:",
+              data,
+              parseErr
+            );
+          }
+        }
+
         throw new Error(parsedError.error || `HTTP ${response.status}`);
       }
-      const parsedData = JSON.parse(data);
+
+      let parsedData: any = {};
+      if (data.trim() !== "") {
+        try {
+          parsedData = JSON.parse(data);
+        } catch (parseErr) {
+          console.error(
+            "Failed to parse success JSON in syncDiscordRoles:",
+            data,
+            parseErr
+          );
+        }
+      }
+
       console.log("Roles synced successfully:", parsedData);
       await fetchRoles();
     } catch (err) {
@@ -214,7 +249,8 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
               No roles found
             </h3>
             <p className="text-gray-200 mb-4">
-              Click "Sync from Discord" to import roles from your Discord server.
+              Click "Sync from Discord" to import roles from your Discord
+              server.
             </p>
             <Button onClick={syncDiscordRoles} disabled={syncing}>
               <RefreshCw
