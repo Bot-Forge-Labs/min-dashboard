@@ -1,4 +1,3 @@
-// role-management-panel.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -29,22 +28,66 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
     try {
       setLoading(true);
       setError(null);
-
-      // Use environment variable for min-api base URL
+      console.log("Fetching roles for guild:", guildId);
       const apiUrl =
-        process.env.DASHBOARD_API_URL || "https://min-bot.api.sogki.dev/";
-      const response = await fetch(`${apiUrl}/api/roles?guild_id=${guildId}`);
-      const data = await response.json();
+        process.env.NEXT_PUBLIC_DASHBOARD_API_URL ||
+        "https://min-bot.api.sogki.dev/";
+      console.log("Primary API URL:", apiUrl);
 
+      // Try primary API
+      const response = await fetch(`${apiUrl}/api/roles?guild_id=${guildId}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
+        },
+      });
+      console.log("Primary API response status:", response.status);
+      const data = await response.text();
+      console.log("Primary API raw response:", data);
+      const parsedData = JSON.parse(data);
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch roles");
+        throw new Error(parsedData.error || `HTTP ${response.status}`);
       }
-
-      console.log("Fetched roles:", data.roles);
-      setRoles(data.roles || []);
+      const roles = Array.isArray(parsedData.roles) ? parsedData.roles : [];
+      console.log("Parsed roles from primary API:", roles);
+      setRoles(roles);
     } catch (err) {
-      console.error("Error fetching roles:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch roles");
+      console.error("Error fetching roles from primary API:", err);
+      // Fallback to Discord API
+      try {
+        console.log("Falling back to Discord API for guild:", guildId);
+        const response = await fetch("/api/fetch-discord-roles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guild_id: guildId }),
+        });
+        console.log("Discord API response status:", response.status);
+        const data = await response.text();
+        console.log("Discord API raw response:", data);
+        const parsedData = JSON.parse(data);
+        if (!response.ok) {
+          throw new Error(parsedData.message || `HTTP ${response.status}`);
+        }
+        // Map Discord API response to Role type
+        const roles: Role[] = parsedData.map((role: any) => ({
+          role_id: role.id,
+          name: role.name,
+          color: role.color,
+          permissions: parseInt(role.permissions),
+          position: role.position,
+          hoist: role.hoist,
+          mentionable: role.mentionable,
+          managed: role.managed,
+        }));
+        console.log("Parsed roles from Discord API:", roles);
+        setRoles(roles);
+      } catch (discordErr) {
+        console.error("Error fetching roles from Discord API:", discordErr);
+        setError(
+          discordErr instanceof Error
+            ? discordErr.message
+            : "Failed to fetch roles from Discord API"
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -54,33 +97,24 @@ export function RoleManagementPanel({ guildId }: RoleManagementPanelProps) {
     try {
       setSyncing(true);
       setError(null);
-
       console.log("Syncing roles for guild:", guildId);
 
-      const response = await fetch(
-        "https://min-bot.api.sogki.dev/api/sync-discord-roles",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.DISCORD_BOT_TOKEN}`,
-          },
-          body: JSON.stringify({ guild_id: guildId }),
-        }
-      );
+      const response = await fetch("/api/sync-roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guild_id: guildId }),
+      });
 
-      // First check if the response is OK (status 2xx)
+      console.log("Sync response status:", response.status);
+      const data = await response.text();
+      console.log("Sync raw response:", data);
+      const parsedData = JSON.parse(data);
+
       if (!response.ok) {
-        const errorData = await response.text(); // Get the raw response text (in case it's not JSON)
-        throw new Error(errorData || `HTTP ${response.status}`);
+        throw new Error(parsedData.error || `HTTP ${response.status}`);
       }
 
-      // If the response is OK, parse the JSON data
-      const data = await response.json();
-
-      console.log("Roles synced successfully:", data);
-
-      // Refresh the roles list
+      console.log("Roles synced successfully:", parsedData);
       await fetchRoles();
     } catch (err) {
       console.error("Error syncing Discord roles:", err);

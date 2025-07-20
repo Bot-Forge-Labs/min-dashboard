@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import {
@@ -115,7 +115,9 @@ export function SettingsForm() {
         return;
       }
 
-      console.log("Fetching user profile for auth.uid():", user.id);
+      console.log("Fetching user profile for auth.uid():", user.id, {
+        metadata: user.user_metadata,
+      });
 
       let userData = null;
 
@@ -161,10 +163,10 @@ export function SettingsForm() {
             avatar,
             banner,
             joined_at,
-          last_active,
-          status,
-          level,
-          xp
+            last_active,
+            status,
+            level,
+            xp
           `
           )
           .eq("id", user.id)
@@ -192,9 +194,10 @@ export function SettingsForm() {
           .insert({
             id: user.id,
             discord_id: user.id,
-            username: user.user_metadata?.username || "Unknown User",
+            username: user.user_metadata?.username || user.user_metadata?.name || "Unknown User",
             discriminator: user.user_metadata?.discriminator || "0000",
-            avatar: user.user_metadata?.avatar_url || null,
+            avatar: user.user_metadata?.avatar_url || user.user_metadata?.avatar || null,
+            banner: user.user_metadata?.banner_url || user.user_metadata?.banner || null,
             joined_at: new Date().toISOString(),
             status: "offline",
             level: 1,
@@ -364,7 +367,7 @@ export function SettingsForm() {
 
   const fetchDiscordProfile = async (userId: string) => {
     if (!userId) {
-      console.error("No user ID provided for Discord profile fetch");
+      console.error("No user ID provided for Discord PROFILE fetch");
       toast.error("No user ID provided for Discord profile fetch");
       setUserProfile({
         id: "unknown",
@@ -401,16 +404,20 @@ export function SettingsForm() {
         throw new Error("Invalid Discord user data");
       }
 
+      // Ensure avatar and banner URLs are correctly formatted
+      const avatarUrl = discordUser.avatar
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=128`
+        : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`;
+      const bannerUrl = discordUser.banner
+        ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.png?size=600`
+        : undefined;
+
       setUserProfile({
         id: discordUser.id,
-        username: discordUser.username || "Unknown User",
+        username: discordUser.username || discordUser.global_name || "Unknown User",
         discriminator: discordUser.discriminator || "0000",
-        avatar: discordUser.avatar
-          ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-          : `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`,
-        banner: discordUser.banner
-          ? `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}.png`
-          : undefined,
+        avatar: avatarUrl,
+        banner: bannerUrl,
         roles: [],
         messageCount: 0,
         joinedAt: new Date().toISOString(),
@@ -655,7 +662,7 @@ export function SettingsForm() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-xl font-bold text-white">
-                          {userProfile.username}#{userProfile.discriminator}
+                          {userProfile.username}
                         </h3>
                         <p className="text-emerald-200/80">
                           User ID: {userProfile.id}
@@ -1043,7 +1050,7 @@ export function SettingsForm() {
                 <Button
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-gradient-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white/80"
+                  className="bg-gradient-to-r from-emerald-800 to-green-700 hover:from-emerald-700 hover:to-green-600 text-white/80"
                 >
                   {saving ? (
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
