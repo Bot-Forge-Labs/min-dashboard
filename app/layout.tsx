@@ -7,16 +7,35 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/contexts/authContext";
 
 /**
- * 
+ *
  *   MAIN FILE FOR LAYOUT
- * 
+ *
  */
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  themeColor: "#71b489ff",
+  robots: "noindex, nofollow",
   title: "Minbot Dashboard",
   description: "Comprehensive Discord bot management dashboard",
+  authors: [
+    {
+      name: "Minbot Developers - Minies Cottage",
+      url: "https://dashboard.minbelyn.live",
+    },
+  ],
+  generator: "Next.js",
+  openGraph: {
+    title: "Minbot Dashboard",
+    description: "Manage Minies Cottage with the secure Minbot Dashboard",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Minbot Dashboard",
+    description: "Manage Minies Cottage with the secure Minbot Dashboard",
+  },
 };
 
 export default function RootLayout({
