@@ -10,7 +10,7 @@ import { Trophy, Medal, Award, Crown, Star, TrendingUp, Search, Calendar, Users,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import type { UserLevel } from "@/types/leveling"
+import type { UserLevel } from "../../types/leveling"
 import Link from "next/link"
 
 interface Guild {
