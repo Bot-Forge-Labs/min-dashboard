@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Trash2, Crown } from "lucide-react"
-import type { LevelRole } from "@/types/leveling"
+import type { LevelRole } from "../../types/leveling"
 import type { Role } from "@/types/database"
 import { toast } from "sonner"
 

@@ -25,21 +25,35 @@ export function LevelingDashboard() {
     // Fetch available guilds
     const fetchGuilds = async () => {
       try {
-        const response = await fetch("/api/guilds", {
+        const res = await fetch("/api/guilds", {
           headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
+            // Optional – add your auth headers here if you need them
+            // Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
           },
         })
 
-        if (response.ok) {
-          const data = await response.json()
-          setGuilds(data.guilds || [])
-          if (data.guilds?.length > 0) {
-            setSelectedGuild(data.guilds[0].guild_id)
-          }
+        // A non-200 gets handled below
+        if (!res.ok) {
+          throw new Error(`Request failed – status ${res.status}`)
         }
-      } catch (error) {
-        console.error("Error fetching guilds:", error)
+
+        // Ensure we really got JSON
+        const contentType = res.headers.get("content-type") || ""
+        if (!contentType.includes("application/json")) {
+          throw new Error("API did not return JSON")
+        }
+
+        const { guilds } = (await res.json()) as { guilds: Guild[] }
+        setGuilds(guilds ?? [])
+
+        // Auto-select first guild (if none selected yet)
+        if (!selectedGuild && guilds?.length) {
+          setSelectedGuild(guilds[0].guild_id)
+        }
+      } catch (err) {
+        console.error("Error fetching guilds:", err)
+        // Show a friendly message in place of toast (works even before toast loads)
+        setGuilds([])
       } finally {
         setLoading(false)
       }

@@ -1,4 +1,4 @@
-import { PublicLeaderboard } from "@/components/leveling/public-leaderboard"
+import { PublicLeaderboard } from "../../../../components/leveling/public-leaderboard"
 import { notFound } from "next/navigation"
 
 interface PublicLeaderboardPageProps {
@@ -10,7 +10,6 @@ interface PublicLeaderboardPageProps {
 async function getGuildInfo(guildId: string) {
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/guilds/${guildId}/public`, {
-      cache: "revalidate",
       next: { revalidate: 300 }, // Revalidate every 5 minutes
     })
 

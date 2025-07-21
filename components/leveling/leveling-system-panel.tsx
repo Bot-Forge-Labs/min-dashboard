@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label"
 import { RefreshCw, Search, TrendingUp, Award, Users, Zap, Plus, Minus, Settings, Crown, Star } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import type { UserLevel, LevelingStats } from "@/types/leveling"
+import type { UserLevel, LevelingStats } from "../../types/leveling"
 import { toast } from "sonner"
 
 interface LevelingSystemPanelProps {
