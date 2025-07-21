@@ -6,12 +6,17 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/contexts/authContext";
 
+/**
+ * 
+ *   MAIN FILE FOR LAYOUT
+ * 
+ */
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Minbot Dashboard",
   description: "Comprehensive Discord bot management dashboard",
-  generator: "v0.dev",
 };
 
 export default function RootLayout({

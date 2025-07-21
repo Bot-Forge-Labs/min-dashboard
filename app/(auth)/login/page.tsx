@@ -5,7 +5,7 @@ export default function LoginPage() {
     <div className="min-h-screen relative overflow-hidden">
       {/* Smooth Animated Background */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-900 to-green-900 animate-gradient-slow"
+        className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-900 to-blue-900 animate-gradient-slow"
         style={{ backgroundSize: "400% 400%" }}
       >
         <div className="absolute inset-0 bg-linear-to-r from-emerald-400/5 via-green-400/5 to-teal-400/5"></div>
@@ -22,7 +22,7 @@ export default function LoginPage() {
             <div className="flex justify-center">
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl"></div>
-                <div className="relative bg-linear-to-br from-emerald-400 to-green-400 p-4 rounded-2xl shadow-2xl">
+                <div className="relative bg-linear-to-br from-emerald-400 to-green-400 p-2 rounded-2xl shadow-2xl">
                   <img
                     src="https://nqbdotjtceuyftutjvsl.supabase.co/storage/v1/object/public/assets//minbot-icon-transparent.png"
                     alt="Minbot"
