@@ -1,4 +1,4 @@
-import { LevelingDashboard } from "@/components/leveling/leveling-dashboard"
+import LevelingDashboard  from "@/components/leveling/leveling-dashboard"
 
 export default function LevelingPage() {
   return (
