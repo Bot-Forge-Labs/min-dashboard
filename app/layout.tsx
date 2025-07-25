@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   authors: [
     {
       name: "Minbot Developers - Minies Cottage",
-      url: "https://dashboard.minbelyn.live",
+      url: "https://dashboard.miniescottage.com",
     },
   ],
   generator: "Next.js",

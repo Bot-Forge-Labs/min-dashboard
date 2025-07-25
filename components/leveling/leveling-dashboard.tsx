@@ -9,6 +9,7 @@ import { XPSettings } from "./xp-settings"
 import { XPLeaderboard } from "./xp-leaderboard"
 import { AutoModerationIntegration } from "./auto-moderation-integration"
 import { Award, Settings, Crown, Trophy, Shield, Server } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface Guild {
   guild_id: string
@@ -20,54 +21,65 @@ export function LevelingDashboard() {
   const [selectedGuild, setSelectedGuild] = useState<string>("")
   const [guilds, setGuilds] = useState<Guild[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchGuilds = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const res = await fetch("/api/guilds", { // Updated URL to match route.ts location
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
+        },
+      });
+
+      console.log("API Response Status:", res.status);
+      console.log("Response Headers:", Object.fromEntries(res.headers));
+      const text = await res.text();
+      console.log("Raw Response Body:", text);
+
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error("API did not return valid JSON");
+      }
+
+      console.log("Parsed Guilds Data:", data);
+      const fetchedGuilds = data.guilds || [];
+      setGuilds(fetchedGuilds);
+
+      if (!selectedGuild && fetchedGuilds.length > 0) {
+        setSelectedGuild(fetchedGuilds[0].guild_id);
+      }
+    } catch (err) {
+      console.error("Error fetching guilds:", err);
+      setError(err.message || "Failed to fetch guilds");
+      setGuilds([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    fetchGuilds();
+  };
 
   useEffect(() => {
-    // Fetch available guilds
-    const fetchGuilds = async () => {
-      try {
-        const res = await fetch("/api/guilds", {
-          headers: {
-            // Optional – add your auth headers here if you need them
-            // Authorization: `Bearer ${process.env.NEXT_PUBLIC_DASHBOARD_API_KEY}`,
-          },
-        })
-
-        // A non-200 gets handled below
-        if (!res.ok) {
-          throw new Error(`Request failed – status ${res.status}`)
-        }
-
-        // Ensure we really got JSON
-        const contentType = res.headers.get("content-type") || ""
-        if (!contentType.includes("application/json")) {
-          throw new Error("API did not return JSON")
-        }
-
-        const { guilds } = (await res.json()) as { guilds: Guild[] }
-        setGuilds(guilds ?? [])
-
-        // Auto-select first guild (if none selected yet)
-        if (!selectedGuild && guilds?.length) {
-          setSelectedGuild(guilds[0].guild_id)
-        }
-      } catch (err) {
-        console.error("Error fetching guilds:", err)
-        // Show a friendly message in place of toast (works even before toast loads)
-        setGuilds([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchGuilds()
-  }, [])
+    fetchGuilds();
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -78,10 +90,9 @@ export function LevelingDashboard() {
           <h1 className="text-2xl font-bold text-white">Leveling System</h1>
         </div>
 
-        {/* Guild Selector */}
         <div className="flex items-center gap-2">
           <Server className="h-4 w-4 text-emerald-400" />
-          <Select value={selectedGuild} onValueChange={setSelectedGuild}>
+          <Select value={selectedGuild} onValueChange={setSelectedGuild} disabled={guilds.length === 0}>
             <SelectTrigger className="w-64 bg-white/5 border-emerald-400/20 text-white">
               <SelectValue placeholder="Select a server..." />
             </SelectTrigger>
@@ -171,9 +182,13 @@ export function LevelingDashboard() {
         <div className="text-center py-12">
           <Server className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
           <h3 className="text-lg font-medium text-emerald-200 mb-2">No servers found</h3>
-          <p className="text-emerald-200/60">Make sure your bot is added to at least one server.</p>
+          <p className="text-emerald-200/60 mb-4">Make sure your bot is added to at least one server.</p>
+          {error && <p className="text-red-400 mb-4">{error}</p>}
+          <Button onClick={handleRetry} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            Retry
+          </Button>
         </div>
       )}
     </div>
-  )
+  );
 }
