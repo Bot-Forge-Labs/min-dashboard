@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   __InternalSupabase: {
@@ -78,6 +72,48 @@ export type Database = {
           image_url?: string | null
           thumbnail_url?: string | null
           title?: string | null
+        }
+        Relationships: []
+      }
+      auto_moderation_config: {
+        Row: {
+          auto_role_removal_enabled: boolean
+          created_at: string
+          enabled: boolean
+          guild_id: string
+          id: string
+          temporary_xp_freeze_duration: number
+          updated_at: string
+          warning_threshold: number
+          xp_penalty_caps: number
+          xp_penalty_spam: number
+          xp_penalty_toxicity: number
+        }
+        Insert: {
+          auto_role_removal_enabled?: boolean
+          created_at?: string
+          enabled?: boolean
+          guild_id: string
+          id?: string
+          temporary_xp_freeze_duration?: number
+          updated_at?: string
+          warning_threshold?: number
+          xp_penalty_caps?: number
+          xp_penalty_spam?: number
+          xp_penalty_toxicity?: number
+        }
+        Update: {
+          auto_role_removal_enabled?: boolean
+          created_at?: string
+          enabled?: boolean
+          guild_id?: string
+          id?: string
+          temporary_xp_freeze_duration?: number
+          updated_at?: string
+          warning_threshold?: number
+          xp_penalty_caps?: number
+          xp_penalty_spam?: number
+          xp_penalty_toxicity?: number
         }
         Relationships: []
       }
@@ -370,7 +406,7 @@ export type Database = {
           updated_at: string | null
           usage_count: number | null
           cooldown_seconds: number | null
-          permissions: string[] | null;
+          permissions: string[] | null
         }
         Insert: {
           command_name: string
@@ -382,7 +418,7 @@ export type Database = {
           updated_at?: string | null
           usage_count?: number | null
           cooldown_seconds?: number | null
-          permissions?: string[] | null;
+          permissions?: string[] | null
         }
         Update: {
           command_name?: string
@@ -394,7 +430,7 @@ export type Database = {
           updated_at?: string | null
           usage_count?: number | null
           cooldown_seconds?: number | null
-          permissions?: string[] | null;
+          permissions?: string[] | null
         }
         Relationships: []
       }
@@ -608,6 +644,111 @@ export type Database = {
           widget_channel_id?: string | null
           widget_enabled?: boolean | null
           status?: string | null
+        }
+        Relationships: []
+      }
+      level_roles: {
+        Row: {
+          created_at: string
+          guild_id: string
+          id: string
+          level: number
+          role_color: number | null
+          role_id: string
+          role_name: string
+        }
+        Insert: {
+          created_at?: string
+          guild_id: string
+          id?: string
+          level: number
+          role_color?: number | null
+          role_id: string
+          role_name: string
+        }
+        Update: {
+          created_at?: string
+          guild_id?: string
+          id?: string
+          level?: number
+          role_color?: number | null
+          role_id?: string
+          role_name?: string
+        }
+        Relationships: []
+      }
+      leveling_config: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          guild_id: string
+          id: string
+          level_up_channel_id: string | null
+          level_up_message: string
+          no_xp_channels: string[]
+          no_xp_roles: string[]
+          updated_at: string
+          xp_cooldown: number
+          xp_per_message: number
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          guild_id: string
+          id?: string
+          level_up_channel_id?: string | null
+          level_up_message?: string
+          no_xp_channels?: string[]
+          no_xp_roles?: string[]
+          updated_at?: string
+          xp_cooldown?: number
+          xp_per_message?: number
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          guild_id?: string
+          id?: string
+          level_up_channel_id?: string | null
+          level_up_message?: string
+          no_xp_channels?: string[]
+          no_xp_roles?: string[]
+          updated_at?: string
+          xp_cooldown?: number
+          xp_per_message?: number
+        }
+        Relationships: []
+      }
+      leveling_stats: {
+        Row: {
+          active_users_today: number
+          average_level: number
+          guild_id: string
+          highest_level: number
+          id: string
+          last_updated: string
+          total_users: number
+          total_xp_given: number
+        }
+        Insert: {
+          active_users_today?: number
+          average_level?: number
+          guild_id: string
+          highest_level?: number
+          id?: string
+          last_updated?: string
+          total_users?: number
+          total_xp_given?: number
+        }
+        Update: {
+          active_users_today?: number
+          average_level?: number
+          guild_id?: string
+          highest_level?: number
+          id?: string
+          last_updated?: string
+          total_users?: number
+          total_xp_given?: number
         }
         Relationships: []
       }
@@ -912,6 +1053,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_levels: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          discriminator: string
+          guild_id: string
+          id: string
+          last_message_time: string | null
+          level: number
+          total_xp: number
+          updated_at: string
+          user_id: string
+          username: string
+          xp: number
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          discriminator: string
+          guild_id: string
+          id?: string
+          last_message_time?: string | null
+          level?: number
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+          username: string
+          xp?: number
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          discriminator?: string
+          guild_id?: string
+          id?: string
+          last_message_time?: string | null
+          level?: number
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+          username?: string
+          xp?: number
+        }
+        Relationships: []
+      }
       user_messages: {
         Row: {
           channel_id: string
@@ -1012,7 +1198,7 @@ export type Database = {
           user_id: string | null
           username: string
           xp: number | null
-          banner: string | null 
+          banner: string | null
           message_count: number | null
         }
         Insert: {
@@ -1037,7 +1223,7 @@ export type Database = {
           user_id?: string | null
           username: string
           xp?: number | null
-          banner?: string | null 
+          banner?: string | null
           message_count?: number | null
         }
         Update: {
@@ -1064,6 +1250,36 @@ export type Database = {
           xp?: number | null
           banner?: string | null
           message_count?: number | null
+        }
+        Relationships: []
+      }
+      xp_transactions: {
+        Row: {
+          created_at: string
+          guild_id: string
+          id: string
+          moderator_id: string | null
+          reason: string | null
+          user_id: string
+          xp_change: number
+        }
+        Insert: {
+          created_at?: string
+          guild_id: string
+          id?: string
+          moderator_id?: string | null
+          reason?: string | null
+          user_id: string
+          xp_change: number
+        }
+        Update: {
+          created_at?: string
+          guild_id?: string
+          id?: string
+          moderator_id?: string | null
+          reason?: string | null
+          user_id?: string
+          xp_change?: number
         }
         Relationships: []
       }
@@ -1106,6 +1322,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_level_from_xp: {
+        Args: { total_xp: number }
+        Returns: number
+      }
       increment_command_usage: {
         Args: { command_name: string }
         Returns: undefined
@@ -1127,6 +1347,10 @@ export type Database = {
           p_joined_at?: string
         }
         Returns: Json
+      }
+      update_leveling_stats: {
+        Args: { p_guild_id: string }
+        Returns: undefined
       }
       upsert_guild: {
         Args: {
@@ -1179,7 +1403,6 @@ export type Database = {
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
@@ -1201,10 +1424,8 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1212,9 +1433,7 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1237,9 +1456,7 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1262,9 +1479,7 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
